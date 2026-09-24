@@ -15,12 +15,4 @@ Open the printed local URL in a WebGPU-capable browser. The first generation dow
 
 The workflow in `.github/workflows/deploy.yml` builds and deploys every push to `main`, `master`, or `work`. In the repository settings, set **Pages → Build and deployment → Source** to **GitHub Actions**.
 
-One repository secret is required for that initial enablement:
-
-1. Create a fine-grained personal access token with access to this repository and **Administration: write** plus **Pages: write** permissions.
-2. Add it under **Settings → Secrets and variables → Actions → New repository secret** with the name `PAGES_TOKEN`.
-3. Push a commit or run **Deploy to GitHub Pages** from the Actions tab.
-
-The built-in `GITHUB_TOKEN` cannot enable Pages, which is why the workflow explicitly uses `PAGES_TOKEN`. After the first successful run, the Pages source is already GitHub Actions and subsequent runs continue to deploy normally.
-
 The Vite build uses relative asset paths, so it works for both user sites and project sites without changing a repository name in configuration.
