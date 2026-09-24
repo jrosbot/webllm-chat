@@ -13,7 +13,7 @@ Open the printed local URL in a WebGPU-capable browser. The first generation dow
 
 ## Deploy to GitHub Pages
 
-The workflow in `.github/workflows/deploy.yml` builds and deploys every push to `main`, `master`, or `work`. It can also enable Pages on a new repository, avoiding the `Get Pages site failed: Not Found` error that occurs when `configure-pages` runs before a Pages site exists.
+The workflow in `.github/workflows/deploy.yml` builds and deploys every push to `main`, `master`, or `work`. In the repository settings, set **Pages → Build and deployment → Source** to **GitHub Actions**.
 
 One repository secret is required for that initial enablement:
 
