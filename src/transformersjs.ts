@@ -1,7 +1,7 @@
-import * as webllm from "@mlc-ai/web-llm";
+import { pipeline, type TextGenerationPipeline } from "@huggingface/transformers";
 import "./style.css";
 
-const MODEL = "Llama-3.2-1B-Instruct-q4f32_1-MLC";
+const MODEL = "HuggingFaceTB/SmolLM2-360M-Instruct";
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <header class="site-header">
@@ -10,7 +10,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <span>ISSUE QUERY</span>
     </a>
     <div class="header-actions">
-      <a class="backend-link" href="./transformersjs.html">Try Transformers.js →</a>
+      <a class="backend-link" href="./index.html">← Use WebLLM</a>
       <div class="local-pill"><span class="pulse"></span> RUNS LOCALLY</div>
     </div>
   </header>
@@ -61,16 +61,16 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 
     <section class="trust-grid">
       <article><span>◈</span><div><h3>100% private</h3><p>Your text never leaves this device.</p></div></article>
-      <article><span>⌁</span><div><h3>Powered by WebGPU</h3><p>The language model runs in your browser.</p></div></article>
+      <article><span>⌁</span><div><h3>Powered by Transformers.js</h3><p>The language model runs in your browser.</p></div></article>
       <article><span>◎</span><div><h3>Works offline</h3><p>Once downloaded, the model is cached.</p></div></article>
     </section>
   </main>
-  <footer><span>ISSUE QUERY / 2026</span><span>Built with WebLLM · No data collected</span></footer>
+  <footer><span>ISSUE QUERY / 2026</span><span>Built with Transformers.js · No data collected</span></footer>
 `;
 
 let platform = "GitHub";
-let engine: webllm.MLCEngineInterface | null = null;
-let loading: Promise<webllm.MLCEngineInterface> | null = null;
+let engine: TextGenerationPipeline | null = null;
+let loading: Promise<TextGenerationPipeline> | null = null;
 
 const description = document.querySelector<HTMLTextAreaElement>("#description")!;
 const generate = document.querySelector<HTMLButtonElement>("#generate")!;
@@ -103,14 +103,17 @@ document.querySelectorAll<HTMLButtonElement>("[data-example]").forEach((button) 
 
 async function loadEngine() {
   if (engine) return engine;
-  if (!("gpu" in navigator)) throw new Error("WebGPU is not available. Open this page in a recent Chrome or Edge browser with hardware acceleration enabled.");
+  if (!("gpu" in navigator)) throw new Error("WebGPU is not available. Open this page in a recent browser with hardware acceleration enabled.");
   if (!loading) {
-    status.textContent = "Downloading model — 0%";
+    status.textContent = "Downloading model…";
     statusDot.classList.add("loading");
     progressWrap.hidden = false;
-    loading = webllm.CreateMLCEngine(MODEL, {
-      initProgressCallback: ({ progress: amount }) => {
-        const percent = Math.round(amount * 100);
+    loading = pipeline("text-generation", MODEL, {
+      device: "webgpu",
+      dtype: "q4",
+      progress_callback: (event: { status: string; progress?: number }) => {
+        if (event.status !== "progress" || event.progress === undefined) return;
+        const percent = Math.round(event.progress);
         status.textContent = `Downloading model — ${percent}%`;
         progress.style.width = `${percent}%`;
       },
@@ -138,15 +141,17 @@ generate.addEventListener("click", async () => {
   try {
     const llm = await loadEngine();
     generate.querySelector("span")!.textContent = "Generating…";
-    const response = await llm.chat.completions.create({
-      temperature: 0.1,
-      max_tokens: 120,
-      messages: [
-        { role: "system", content: `You convert natural-language requests into one valid ${platform} issue search query. Use ${platform} search operators such as is, author, assignee, label, type, state, created, updated, comments, language, and repo when relevant. Resolve “me” to @me. Output only the query on one line: no markdown, explanation, quotation marks, or URL.` },
-        { role: "user", content: request },
-      ],
+    const response = await llm([
+      { role: "system", content: `You convert natural-language requests into one valid ${platform} issue search query. Use ${platform} search operators such as is, author, assignee, label, type, state, created, updated, comments, language, and repo when relevant. Resolve “me” to @me. Output only the query on one line: no markdown, explanation, quotation marks, or URL.` },
+      { role: "user", content: request },
+    ], {
+      max_new_tokens: 120,
+      do_sample: false,
+      return_full_text: false,
     });
-    const output = response.choices[0]?.message?.content?.trim().replace(/^`+|`+$/g, "") ?? "";
+    const generated = response[0]?.generated_text;
+    const lastContent = typeof generated === "string" ? generated : generated?.at(-1)?.content;
+    const output = (typeof lastContent === "string" ? lastContent : "").trim().replace(/^`+|`+$/g, "");
     if (!output) throw new Error("The model returned an empty query. Please try again.");
     query.textContent = output;
     openSearch.href = platform === "GitHub"
