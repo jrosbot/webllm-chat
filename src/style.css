@@ -54,3 +54,18 @@ footer { min-height: 65px; border-top: 1px solid #ccc9bf; padding: 0 clamp(24px,
 [hidden] { display: none !important; }
 @media (max-width: 760px) { .hero { grid-template-columns: 1fr; padding-top: 55px; }.lede { margin-top: 30px; }.workspace-head, .action-row { align-items: stretch; flex-direction: column; }.platform { width: fit-content; }.generate { width: 100%; }.trust-grid { grid-template-columns: 1fr; gap: 25px; }.trust-grid article { border: 0; padding: 0; } }
 @media (max-width: 440px) { main { width: calc(100% - 28px); }.local-pill { display: none; }.hero { padding-bottom: 38px; } h1 { font-size: 49px; }.workspace { padding: 20px; box-shadow: 6px 6px 0 #d9ff48; } footer { align-items: start; flex-direction: column; justify-content: center; gap: 6px; } }
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.backend-link {
+  color: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+}
+
+.backend-link:hover { text-decoration: underline; }
