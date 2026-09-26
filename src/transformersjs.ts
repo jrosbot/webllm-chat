@@ -50,6 +50,10 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
         <button id="generate" class="generate"><span>Generate query</span><b aria-hidden="true">→</b></button>
       </div>
       <div id="progress-wrap" class="progress-wrap" hidden><div id="progress" class="progress"></div></div>
+      <div id="download-help" class="download-help" hidden>
+        <span id="download-detail">The first download may take a few minutes. Keep this tab open.</span>
+        <button id="reset-download" type="button" hidden>Clear download &amp; retry</button>
+      </div>
 
       <div id="result" class="result" hidden>
         <div class="result-label"><span>02</span> YOUR SEARCH QUERY</div>
@@ -82,6 +86,18 @@ const result = document.querySelector<HTMLDivElement>("#result")!;
 const query = document.querySelector<HTMLElement>("#query")!;
 const error = document.querySelector<HTMLParagraphElement>("#error")!;
 const openSearch = document.querySelector<HTMLAnchorElement>("#open-search")!;
+const downloadHelp = document.querySelector<HTMLDivElement>("#download-help")!;
+const downloadDetail = document.querySelector<HTMLSpanElement>("#download-detail")!;
+const resetDownload = document.querySelector<HTMLButtonElement>("#reset-download")!;
+let stallTimer: number | undefined;
+
+function armStallWarning() {
+  window.clearTimeout(stallTimer);
+  stallTimer = window.setTimeout(() => {
+    downloadDetail.textContent = "No progress for a while. Check your connection, or clear the partial download and retry.";
+    resetDownload.hidden = false;
+  }, 45_000);
+}
 
 document.querySelectorAll<HTMLButtonElement>(".platform-button").forEach((button) => {
   button.addEventListener("click", () => {
@@ -108,6 +124,9 @@ async function loadEngine() {
     status.textContent = "Downloading model…";
     statusDot.classList.add("loading");
     progressWrap.hidden = false;
+    downloadHelp.hidden = false;
+    resetDownload.hidden = true;
+    armStallWarning();
     loading = pipeline("text-generation", MODEL, {
       device: "webgpu",
       dtype: "q4",
@@ -115,17 +134,31 @@ async function loadEngine() {
         if (event.status !== "progress" || event.progress === undefined) return;
         const percent = Math.round(event.progress);
         status.textContent = `Downloading model — ${percent}%`;
+        downloadDetail.textContent = "Downloading model files…";
         progress.style.width = `${percent}%`;
+        armStallWarning();
       },
     });
   }
   engine = await loading;
+  window.clearTimeout(stallTimer);
   status.textContent = "Model ready";
   statusDot.classList.remove("loading");
   statusDot.classList.add("ready");
   progressWrap.hidden = true;
+  downloadHelp.hidden = true;
   return engine;
 }
+
+resetDownload.addEventListener("click", async () => {
+  resetDownload.disabled = true;
+  downloadDetail.textContent = "Clearing the incomplete model download…";
+  try {
+    if ("caches" in window) await window.caches.delete("transformers-cache");
+  } finally {
+    window.location.reload();
+  }
+});
 
 generate.addEventListener("click", async () => {
   const request = description.value.trim();
@@ -159,7 +192,13 @@ generate.addEventListener("click", async () => {
       : `https://gitlab.com/dashboard/issues?search=${encodeURIComponent(output)}`;
     result.hidden = false;
   } catch (reason) {
+    window.clearTimeout(stallTimer);
     error.textContent = reason instanceof Error ? reason.message : "The model could not be loaded. Please try again.";
+    status.textContent = "Model download interrupted";
+    statusDot.classList.remove("loading");
+    downloadDetail.textContent = "The download did not finish. Clear its partial cache before trying again.";
+    downloadHelp.hidden = false;
+    resetDownload.hidden = false;
     loading = null;
   } finally {
     generate.disabled = false;

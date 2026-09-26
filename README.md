@@ -11,7 +11,7 @@ npm run dev
 
 Open the printed local URL in a WebGPU-capable browser. The app lets the user choose a model before the first generation and caches each downloaded model for later visits. **SmolLM2 135M** is the default model with the fewest parameters; WebLLM's available build requires WebGPU `shader-f16`. **SmolLM2 360M** is a more capable, broadly compatible alternative, while **Llama 3.2 1B** offers the best results at the cost of the largest download. The selector is locked after loading starts so that progress, cache clearing, and generation always refer to the same model.
 
-During the first download the app now displays WebLLM's detailed loading message, rather than only a percentage. If no progress event arrives for 45 seconds, a **Clear download & retry** action appears and removes the incomplete model from WebLLM's browser cache before reloading the page. Ad blockers, VPNs, corporate proxies, and restrictive networks can block model files served by Hugging Face; try another network if a clean retry still stops at the same point.
+During the first download each backend displays download progress. If no progress event arrives for 45 seconds, a **Clear download & retry** action appears and removes the incomplete model from that backend's browser cache before reloading the page. Ad blockers, VPNs, corporate proxies, and restrictive networks can block model files served by Hugging Face; try another network if a clean retry still stops at the same point.
 
 ## Deploy to GitHub Pages
 
