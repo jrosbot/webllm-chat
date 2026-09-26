@@ -29,13 +29,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      - name: Enable and configure GitHub Pages
+      - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
-        with:
-          # configure-pages cannot enable a site with the job's GITHUB_TOKEN.
-          # PAGES_TOKEN must have Administration and Pages write permissions.
-          token: ${{ secrets.PAGES_TOKEN }}
-          enablement: true
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
