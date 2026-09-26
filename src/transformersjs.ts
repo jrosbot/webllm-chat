@@ -1,7 +1,23 @@
 import { pipeline, type TextGenerationPipeline } from "@huggingface/transformers";
 import "./style.css";
 
-const MODEL = "HuggingFaceTB/SmolLM2-360M-Instruct";
+const MODELS = [
+  {
+    id: "HuggingFaceTB/SmolLM2-135M-Instruct",
+    label: "SmolLM2 135M · smallest",
+    note: "Fastest download · suitable for simple queries",
+  },
+  {
+    id: "HuggingFaceTB/SmolLM2-360M-Instruct",
+    label: "SmolLM2 360M · balanced",
+    note: "Better results · moderate download",
+  },
+  {
+    id: "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+    label: "SmolLM2 1.7B · quality",
+    note: "Best results · largest download and memory use",
+  },
+] as const;
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <header class="site-header">
@@ -42,10 +58,20 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
         <button data-example="Documentation issues assigned to me that have not been updated in 30 days">Stale docs assigned to me</button>
       </div>
 
+      <div class="model-picker">
+        <label for="model">LOCAL MODEL</label>
+        <div>
+          <select id="model" aria-describedby="model-note">
+            ${MODELS.map(({ id, label }) => `<option value="${id}">${label}</option>`).join("")}
+          </select>
+          <span id="model-note">${MODELS[0].note}</span>
+        </div>
+      </div>
+
       <div class="action-row">
         <div class="status-wrap">
           <span id="status-dot" class="status-dot"></span>
-          <span id="status">Model not loaded</span>
+          <span id="status">${MODELS[0].label} · loads on first use</span>
         </div>
         <button id="generate" class="generate"><span>Generate query</span><b aria-hidden="true">→</b></button>
       </div>
@@ -89,7 +115,18 @@ const openSearch = document.querySelector<HTMLAnchorElement>("#open-search")!;
 const downloadHelp = document.querySelector<HTMLDivElement>("#download-help")!;
 const downloadDetail = document.querySelector<HTMLSpanElement>("#download-detail")!;
 const resetDownload = document.querySelector<HTMLButtonElement>("#reset-download")!;
+const modelSelect = document.querySelector<HTMLSelectElement>("#model")!;
+const modelNote = document.querySelector<HTMLSpanElement>("#model-note")!;
 let stallTimer: number | undefined;
+
+function selectedModel() {
+  return MODELS.find(({ id }) => id === modelSelect.value) ?? MODELS[0];
+}
+
+modelSelect.addEventListener("change", () => {
+  modelNote.textContent = selectedModel().note;
+  status.textContent = `${selectedModel().label} · loads on first use`;
+});
 
 function armStallWarning() {
   window.clearTimeout(stallTimer);
@@ -121,13 +158,15 @@ async function loadEngine() {
   if (engine) return engine;
   if (!("gpu" in navigator)) throw new Error("WebGPU is not available. Open this page in a recent browser with hardware acceleration enabled.");
   if (!loading) {
+    const model = selectedModel();
+    modelSelect.disabled = true;
     status.textContent = "Downloading model…";
     statusDot.classList.add("loading");
     progressWrap.hidden = false;
     downloadHelp.hidden = false;
     resetDownload.hidden = true;
     armStallWarning();
-    loading = pipeline("text-generation", MODEL, {
+    loading = pipeline("text-generation", model.id, {
       device: "webgpu",
       dtype: "q4",
       progress_callback: (event: { status: string; progress?: number }) => {
@@ -200,6 +239,7 @@ generate.addEventListener("click", async () => {
     downloadHelp.hidden = false;
     resetDownload.hidden = false;
     loading = null;
+    modelSelect.disabled = false;
   } finally {
     generate.disabled = false;
     generate.querySelector("span")!.textContent = "Generate query";
