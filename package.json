@@ -1,0 +1,19 @@
+{
+  "name": "issue-query",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.3.0",
+    "@mlc-ai/web-llm": "0.2.85"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^8.0.0"
+  }
+}
