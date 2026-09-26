@@ -29,14 +29,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
-      # Pages is already configured to use GitHub Actions. Omitting `token`
-      # would also use github.token by default, but passing the built-in token
-      # explicitly makes it impossible to accidentally restore the old empty
-      # PAGES_TOKEN secret while resolving future merge conflicts.
+      # Pages must already use GitHub Actions as its deployment source.
+      # configure-pages uses the workflow's built-in github.token by default.
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
-        with:
-          token: ${{ github.token }}
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
