@@ -15,7 +15,9 @@ During the first download the app now displays WebLLM's detailed loading message
 
 ## Deploy to GitHub Pages
 
-The workflow in `.github/workflows/deploy.yml` builds and deploys every push to `main`, `master`, or `work`. In the repository settings, set **Pages → Build and deployment → Source** to **GitHub Actions** once before the first deployment. No personal access token or `PAGES_TOKEN` secret is required: the workflow uses its automatically provided `GITHUB_TOKEN` with the `pages: write` and `id-token: write` permissions declared in the workflow.
+The workflow in `.github/workflows/deploy.yml` builds and deploys every push to `main`, `master`, or `work`. In the repository settings, set **Pages → Build and deployment → Source** to **GitHub Actions** once before the first deployment. No personal access token or `PAGES_TOKEN` secret is required: the workflow passes its automatically provided `github.token` to `actions/configure-pages` and grants `pages: write` and `id-token: write` to the job.
+
+If a merge reintroduces `token: ${{ secrets.PAGES_TOKEN }}`, remove it or replace it with `token: ${{ github.token }}`. An undefined repository secret expands to an empty string and makes `configure-pages` fail with `Parameter token or opts.auth is required`.
 
 The Vite build uses relative asset paths, so it works for both user sites and project sites without changing a repository name in configuration.
 

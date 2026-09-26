@@ -30,10 +30,13 @@ jobs:
       - run: npm ci
       - run: npm run build
       # Pages is already configured to use GitHub Actions. Omitting `token`
-      # lets configure-pages use github.token instead of passing an empty
-      # optional secret, which causes "Parameter token or opts.auth is required".
+      # would also use github.token by default, but passing the built-in token
+      # explicitly makes it impossible to accidentally restore the old empty
+      # PAGES_TOKEN secret while resolving future merge conflicts.
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
+        with:
+          token: ${{ github.token }}
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
