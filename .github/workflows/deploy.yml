@@ -1,0 +1,44 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main, master, work]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    # Pin the image so runner migrations cannot silently change the build.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Enable and configure GitHub Pages
+        uses: actions/configure-pages@v6
+        with:
+          # configure-pages cannot enable a site with the job's GITHUB_TOKEN.
+          # PAGES_TOKEN must have Administration and Pages write permissions.
+          token: ${{ secrets.PAGES_TOKEN }}
+          enablement: true
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
