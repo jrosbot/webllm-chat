@@ -10,6 +10,9 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .brand-mark { width: 26px; height: 26px; background: #171812; display: flex; align-items: end; justify-content: center; gap: 2px; padding: 6px; }
 .brand-mark span { display: block; width: 3px; background: #d9ff48; }
 .brand-mark span:nth-child(1) { height: 6px; }.brand-mark span:nth-child(2) { height: 13px; }.brand-mark span:nth-child(3) { height: 9px; }
+.header-actions { display: flex; align-items: center; gap: 1rem; }
+.backend-link { color: inherit; font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-decoration: none; }
+.backend-link:hover { text-decoration: underline; }
 .local-pill { border: 1px solid #c8c5bc; border-radius: 99px; padding: 8px 12px; font: 500 10px DM Mono, monospace; letter-spacing: .1em; }
 .pulse { display: inline-block; width: 6px; height: 6px; background: #4a7319; border-radius: 50%; margin-right: 7px; }
 main { width: min(1120px, calc(100% - 48px)); margin: 0 auto; }

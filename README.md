@@ -26,3 +26,5 @@ One repository secret is required for that initial enablement:
 The built-in `GITHUB_TOKEN` cannot enable Pages, which is why the workflow explicitly uses `PAGES_TOKEN`. After the first successful run, the Pages source is already GitHub Actions and subsequent runs continue to deploy normally.
 
 The Vite build uses relative asset paths, so it works for both user sites and project sites without changing a repository name in configuration.
+
+Each deployment includes two linked pages: `index.html` contains the WebLLM version, while `transformersjs.html` contains the Transformers.js alternative. Vite builds both entry points together, so users can switch implementations without a separate deployment.
