@@ -15,9 +15,12 @@ function firstDayOfMonthIso(now: Date): string {
 
 /** Removes chatty model output while preserving quoted, space-containing labels. */
 export function cleanGeneratedQuery(output: string): string {
-  return output
+  const unwrapped = output
     .replace(/```(?:text)?/gi, "")
-    .trim()
+    .trim();
+  const final = [...unwrapped.matchAll(/^final\s*:\s*(.+)$/gim)].at(-1)?.[1];
+
+  return (final ?? unwrapped)
     .split(/\r?\n/, 1)[0]
     .replace(RESPONSE_PREFIX, "")
     .replace(TRAILING_CHAT, "")

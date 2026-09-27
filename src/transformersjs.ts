@@ -1,5 +1,5 @@
 import { pipeline, type TextGenerationPipeline } from "@huggingface/transformers";
-import { createDraftPrompt, createRefinementPrompt, createRefinementRequest, type SearchPlatform } from "./searchPrompt";
+import { createTwoStepPrompt, MAX_REQUEST_LENGTH, type SearchPlatform } from "./searchPrompt";
 import { renderOperatorReference } from "./operatorReference";
 import { createSearchQuery, createSearchUrl } from "./searchQuery";
 import "./style.css";
@@ -53,7 +53,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
         </div>
       </div>
 
-      <textarea id="description" rows="4" placeholder="e.g. Open accessibility bugs assigned to me, created this month, with more than 5 comments…" aria-label="Issue description"></textarea>
+      <textarea id="description" rows="4" maxlength="${MAX_REQUEST_LENGTH}" placeholder="e.g. Open accessibility bugs assigned to me, created this month, with more than 5 comments…" aria-label="Issue description"></textarea>
       <div class="examples">
         <span>TRY AN EXAMPLE</span>
         <button data-example="Good first issues in TypeScript repositories with no assignee">Good first issues</button>
@@ -222,24 +222,11 @@ generate.addEventListener("click", async () => {
   try {
     const llm = await loadEngine();
     generate.querySelector("span")!.textContent = "Generating…";
-    const draftResponse = await llm([
-      { role: "system", content: createDraftPrompt(platform) },
+    const response = await llm([
+      { role: "system", content: createTwoStepPrompt(platform) },
       { role: "user", content: request },
     ], {
-      max_new_tokens: 64,
-      do_sample: false,
-      return_full_text: false,
-    });
-    const generatedDraft = draftResponse[0]?.generated_text;
-    const draftContent = typeof generatedDraft === "string" ? generatedDraft : generatedDraft?.at(-1)?.content;
-    const draft = typeof draftContent === "string" ? draftContent.trim() : "";
-    if (!draft) throw new Error("The model returned an empty draft. Please try again.");
-    generate.querySelector("span")!.textContent = "Refining…";
-    const response = await llm([
-      { role: "system", content: createRefinementPrompt(platform) },
-      { role: "user", content: createRefinementRequest(request, draft) },
-    ], {
-      max_new_tokens: 64,
+      max_new_tokens: 128,
       do_sample: false,
       return_full_text: false,
     });
