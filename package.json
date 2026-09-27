@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.0",
-    "@mlc-ai/web-llm": "0.2.85"
+    "@mlc-ai/web-llm": "0.2.85",
+    "@wllama/wllama": "^3.6.1"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
