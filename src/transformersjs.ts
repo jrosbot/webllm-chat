@@ -1,4 +1,5 @@
 import { pipeline, type TextGenerationPipeline } from "@huggingface/transformers";
+import { createSearchPrompt, type SearchPlatform } from "./searchPrompt";
 import "./style.css";
 
 const MODELS = [
@@ -98,7 +99,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <footer><span>ISSUE QUERY / 2026</span><span>Built with Transformers.js · No data collected</span></footer>
 `;
 
-let platform = "GitHub";
+let platform: SearchPlatform = "GitHub";
 let engine: TextGenerationPipeline | null = null;
 let loading: Promise<TextGenerationPipeline> | null = null;
 
@@ -138,7 +139,7 @@ function armStallWarning() {
 
 document.querySelectorAll<HTMLButtonElement>(".platform-button").forEach((button) => {
   button.addEventListener("click", () => {
-    platform = button.dataset.platform!;
+    platform = button.dataset.platform as SearchPlatform;
     document.querySelectorAll<HTMLButtonElement>(".platform-button").forEach((item) => {
       const active = item === button;
       item.classList.toggle("active", active);
@@ -214,7 +215,7 @@ generate.addEventListener("click", async () => {
     const llm = await loadEngine();
     generate.querySelector("span")!.textContent = "Generating…";
     const response = await llm([
-      { role: "system", content: `You convert natural-language requests into one valid ${platform} issue search query. Use ${platform} search operators such as is, author, assignee, label, type, state, created, updated, comments, language, and repo when relevant. Resolve “me” to @me. Output only the query on one line: no markdown, explanation, quotation marks, or URL.` },
+      { role: "system", content: createSearchPrompt(platform) },
       { role: "user", content: request },
     ], {
       max_new_tokens: 120,

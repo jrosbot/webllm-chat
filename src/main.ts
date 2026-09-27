@@ -1,4 +1,5 @@
 import * as webllm from "@mlc-ai/web-llm";
+import { createSearchPrompt, type SearchPlatform } from "./searchPrompt";
 import "./style.css";
 
 const MODELS = [
@@ -98,7 +99,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <footer><span>ISSUE QUERY / 2026</span><span>Built with WebLLM · No data collected</span></footer>
 `;
 
-let platform = "GitHub";
+let platform: SearchPlatform = "GitHub";
 let engine: webllm.MLCEngineInterface | null = null;
 let loading: Promise<webllm.MLCEngineInterface> | null = null;
 
@@ -138,7 +139,7 @@ function armStallWarning() {
 
 document.querySelectorAll<HTMLButtonElement>(".platform-button").forEach((button) => {
   button.addEventListener("click", () => {
-    platform = button.dataset.platform!;
+    platform = button.dataset.platform as SearchPlatform;
     document.querySelectorAll<HTMLButtonElement>(".platform-button").forEach((item) => {
       const active = item === button;
       item.classList.toggle("active", active);
@@ -214,7 +215,7 @@ generate.addEventListener("click", async () => {
       temperature: 0.1,
       max_tokens: 120,
       messages: [
-        { role: "system", content: `You convert natural-language requests into one valid ${platform} issue search query. Use ${platform} search operators such as is, author, assignee, label, type, state, created, updated, comments, language, and repo when relevant. Resolve “me” to @me. Output only the query on one line: no markdown, explanation, quotation marks, or URL.` },
+        { role: "system", content: createSearchPrompt(platform) },
         { role: "user", content: request },
       ],
     });
