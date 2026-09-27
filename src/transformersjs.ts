@@ -1,6 +1,4 @@
 import { pipeline, type TextGenerationPipeline } from "@huggingface/transformers";
-import { CacheManager, LoggerWithoutDebug, Wllama } from "@wllama/wllama";
-import wllamaWasmUrl from "@wllama/wllama/esm/wasm/wllama.wasm?url";
 import { createTwoStepPrompt, MAX_REQUEST_LENGTH, type SearchPlatform } from "./searchPrompt";
 import { renderOperatorReference } from "./operatorReference";
 import { createSearchQuery, createSearchUrl } from "./searchQuery";
@@ -8,27 +6,20 @@ import "./style.css";
 
 const MODELS = [
   {
-    id: "bartowski/SmolLM2-135M-Instruct-GGUF",
-    file: "SmolLM2-135M-Instruct-Q2_K.gguf",
-    backend: "gguf",
-    label: "SmolLM2 135M Q2_K · smallest download",
-    note: "Extra-small GGUF quantization · runs with WebAssembly or WebGPU",
-  },
-  {
     id: "HuggingFaceTB/SmolLM2-135M-Instruct",
-    backend: "transformers",
-    label: "SmolLM2 135M · smallest",
-    note: "Fastest download · suitable for simple queries",
+    device: "wasm",
+    label: "SmolLM2 135M Q4 · CPU",
+    note: "Smallest model · quantized · works without WebGPU",
   },
   {
     id: "HuggingFaceTB/SmolLM2-360M-Instruct",
-    backend: "transformers",
+    device: "webgpu",
     label: "SmolLM2 360M · balanced",
     note: "Better results · moderate download",
   },
   {
     id: "HuggingFaceTB/SmolLM2-1.7B-Instruct",
-    backend: "transformers",
+    device: "webgpu",
     label: "SmolLM2 1.7B · quality",
     note: "Best results · largest download and memory use",
   },
@@ -118,12 +109,8 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
 `;
 
 let platform: SearchPlatform = "GitHub";
-type LocalEngine = TextGenerationPipeline | Wllama;
-
-let engine: LocalEngine | null = null;
-let loading: Promise<LocalEngine> | null = null;
-let loadedBackend: (typeof MODELS)[number]["backend"] | null = null;
-let ggufEngine: Wllama | null = null;
+let engine: TextGenerationPipeline | null = null;
+let loading: Promise<TextGenerationPipeline> | null = null;
 
 const description = document.querySelector<HTMLTextAreaElement>("#description")!;
 const generate = document.querySelector<HTMLButtonElement>("#generate")!;
@@ -183,8 +170,8 @@ async function loadEngine() {
   if (engine) return engine;
   if (!loading) {
     const model = selectedModel();
-    if (model.backend === "transformers" && !("gpu" in navigator)) {
-      throw new Error("WebGPU is not available. Choose the Q2_K GGUF model to run with WebAssembly instead.");
+    if (model.device === "webgpu" && !("gpu" in navigator)) {
+      throw new Error("WebGPU is not available. Choose the SmolLM2 135M Q4 CPU model instead.");
     }
     modelSelect.disabled = true;
     status.textContent = "Downloading model…";
@@ -200,25 +187,13 @@ async function loadEngine() {
       progress.style.width = `${percent}%`;
       armStallWarning();
     };
-    loadedBackend = model.backend;
-    if (model.backend === "gguf") {
-      ggufEngine = new Wllama({ default: wllamaWasmUrl }, { logger: LoggerWithoutDebug });
-      loading = ggufEngine.loadModelFromHF(
-        { repo: model.id, file: model.file },
-        {
-          n_ctx: 2048,
-          progressCallback: ({ loaded, total }) => updateProgress(total ? (loaded / total) * 100 : 0),
-        },
-      ).then(() => ggufEngine!);
-    } else {
-      loading = pipeline("text-generation", model.id, {
-        device: "webgpu",
-        dtype: "q4",
-        progress_callback: (event: { status: string; progress?: number }) => {
-          if (event.status === "progress" && event.progress !== undefined) updateProgress(event.progress);
-        },
-      });
-    }
+    loading = pipeline("text-generation", model.id, {
+      device: model.device,
+      dtype: "q4",
+      progress_callback: (event: { status: string; progress?: number }) => {
+        if (event.status === "progress" && event.progress !== undefined) updateProgress(event.progress);
+      },
+    });
   }
   engine = await loading;
   window.clearTimeout(stallTimer);
@@ -234,8 +209,7 @@ resetDownload.addEventListener("click", async () => {
   resetDownload.disabled = true;
   downloadDetail.textContent = "Clearing the incomplete model download…";
   try {
-    if (selectedModel().backend === "gguf") await (ggufEngine?.cacheManager ?? new CacheManager()).clear();
-    else if ("caches" in window) await window.caches.delete("transformers-cache");
+    if ("caches" in window) await window.caches.delete("transformers-cache");
   } finally {
     window.location.reload();
   }
@@ -255,30 +229,17 @@ generate.addEventListener("click", async () => {
   try {
     const llm = await loadEngine();
     generate.querySelector("span")!.textContent = "Generating…";
-    let generatedText = "";
-    if (loadedBackend === "gguf") {
-      const response = await (llm as Wllama).createChatCompletion({
-        messages: [
-          { role: "system", content: createTwoStepPrompt(platform) },
-          { role: "user", content: request },
-        ],
-        max_tokens: 128,
-        temperature: 0,
-      });
-      generatedText = response.choices[0]?.message.content ?? "";
-    } else {
-      const response = await (llm as TextGenerationPipeline)([
-        { role: "system", content: createTwoStepPrompt(platform) },
-        { role: "user", content: request },
-      ], {
-        max_new_tokens: 128,
-        do_sample: false,
-        return_full_text: false,
-      });
-      const generated = response[0]?.generated_text;
-      const lastContent = typeof generated === "string" ? generated : generated?.at(-1)?.content;
-      generatedText = typeof lastContent === "string" ? lastContent : "";
-    }
+    const response = await llm([
+      { role: "system", content: createTwoStepPrompt(platform) },
+      { role: "user", content: request },
+    ], {
+      max_new_tokens: 128,
+      do_sample: false,
+      return_full_text: false,
+    });
+    const generated = response[0]?.generated_text;
+    const lastContent = typeof generated === "string" ? generated : generated?.at(-1)?.content;
+    const generatedText = typeof lastContent === "string" ? lastContent : "";
     const output = createSearchQuery(platform, request, generatedText);
     if (!output) throw new Error("The model returned an empty query. Please try again.");
     query.textContent = output;
@@ -293,8 +254,6 @@ generate.addEventListener("click", async () => {
     downloadHelp.hidden = false;
     resetDownload.hidden = false;
     loading = null;
-    loadedBackend = null;
-    ggufEngine = null;
     modelSelect.disabled = false;
   } finally {
     generate.disabled = false;
