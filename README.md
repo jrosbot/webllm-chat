@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Open the printed local URL in a WebGPU-capable browser. Both implementations let the user choose one of three models before the first generation and cache downloaded models for later visits. The Transformers.js page offers **SmolLM2 135M**, **SmolLM2 360M**, and **SmolLM2 1.7B**, ranging from the quickest download to the highest-quality result. The WebLLM page offers **SmolLM2 135M**, **SmolLM2 360M**, and **Llama 3.2 1B**; its 135M build requires WebGPU `shader-f16`. Each selector is locked after loading starts so that progress, cache clearing, and generation always refer to the same model.
+Open the printed local URL in a recent browser. The Transformers.js page defaults to a 2-bit quantized **SmolLM2 135M Q2** model that runs on the CPU through WebAssembly, so it works without WebGPU and has the smallest model footprint. It also offers the larger **SmolLM2 360M Q4** and **SmolLM2 1.7B Q4** WebGPU models. The WebLLM page offers **SmolLM2 135M**, **SmolLM2 360M**, and **Llama 3.2 1B**; its 135M build requires WebGPU `shader-f16`. Each selector is locked after loading starts so that progress, cache clearing, and generation always refer to the same model, and downloaded models are cached for later visits.
 
 During the first download each backend displays download progress. If no progress event arrives for 45 seconds, a **Clear download & retry** action appears and removes the incomplete model from that backend's browser cache before reloading the page. Ad blockers, VPNs, corporate proxies, and restrictive networks can block model files served by Hugging Face; try another network if a clean retry still stops at the same point.
 

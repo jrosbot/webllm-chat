@@ -7,16 +7,22 @@ import "./style.css";
 const MODELS = [
   {
     id: "HuggingFaceTB/SmolLM2-135M-Instruct",
-    label: "SmolLM2 135M · smallest",
-    note: "Fastest download · suitable for simple queries",
+    device: "wasm",
+    dtype: "q2",
+    label: "SmolLM2 135M Q2 · CPU",
+    note: "Smallest 2-bit model · works without WebGPU",
   },
   {
     id: "HuggingFaceTB/SmolLM2-360M-Instruct",
+    device: "webgpu",
+    dtype: "q4",
     label: "SmolLM2 360M · balanced",
     note: "Better results · moderate download",
   },
   {
     id: "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+    device: "webgpu",
+    dtype: "q4",
     label: "SmolLM2 1.7B · quality",
     note: "Best results · largest download and memory use",
   },
@@ -165,9 +171,11 @@ document.querySelectorAll<HTMLButtonElement>("[data-example]").forEach((button) 
 
 async function loadEngine() {
   if (engine) return engine;
-  if (!("gpu" in navigator)) throw new Error("WebGPU is not available. Open this page in a recent browser with hardware acceleration enabled.");
   if (!loading) {
     const model = selectedModel();
+    if (model.device === "webgpu" && !("gpu" in navigator)) {
+      throw new Error("WebGPU is not available. Choose the SmolLM2 135M Q2 CPU model instead.");
+    }
     modelSelect.disabled = true;
     status.textContent = "Downloading model…";
     statusDot.classList.add("loading");
@@ -175,16 +183,18 @@ async function loadEngine() {
     downloadHelp.hidden = false;
     resetDownload.hidden = true;
     armStallWarning();
+    const updateProgress = (amount: number) => {
+      const percent = Math.round(amount);
+      status.textContent = `Downloading model — ${percent}%`;
+      downloadDetail.textContent = "Downloading model files…";
+      progress.style.width = `${percent}%`;
+      armStallWarning();
+    };
     loading = pipeline("text-generation", model.id, {
-      device: "webgpu",
-      dtype: "q4",
+      device: model.device,
+      dtype: model.dtype,
       progress_callback: (event: { status: string; progress?: number }) => {
-        if (event.status !== "progress" || event.progress === undefined) return;
-        const percent = Math.round(event.progress);
-        status.textContent = `Downloading model — ${percent}%`;
-        downloadDetail.textContent = "Downloading model files…";
-        progress.style.width = `${percent}%`;
-        armStallWarning();
+        if (event.status === "progress" && event.progress !== undefined) updateProgress(event.progress);
       },
     });
   }
@@ -232,7 +242,8 @@ generate.addEventListener("click", async () => {
     });
     const generated = response[0]?.generated_text;
     const lastContent = typeof generated === "string" ? generated : generated?.at(-1)?.content;
-    const output = createSearchQuery(platform, request, typeof lastContent === "string" ? lastContent : "");
+    const generatedText = typeof lastContent === "string" ? lastContent : "";
+    const output = createSearchQuery(platform, request, generatedText);
     if (!output) throw new Error("The model returned an empty query. Please try again.");
     query.textContent = output;
     openSearch.href = createSearchUrl(platform, output);
