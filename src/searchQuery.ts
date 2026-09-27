@@ -9,6 +9,10 @@ function firstDayOfMonth(now: Date): string {
   return `${year}-${month}-01`;
 }
 
+function firstDayOfMonthIso(now: Date): string {
+  return `${firstDayOfMonth(now)}T00:00:00Z`;
+}
+
 /** Removes chatty model output while preserving quoted, space-containing labels. */
 export function cleanGeneratedQuery(output: string): string {
   return output
@@ -26,9 +30,9 @@ function fallbackQuery(platform: SearchPlatform, request: string, now: Date): st
   const filters: string[] = [];
   const github = platform === "GitHub";
 
-  if (/\b(?:issue|issues|bug|bugs)\b/.test(text)) filters.push(github ? "is:issue" : "type:issue");
-  if (/\bopen(?:ed)?\b/.test(text)) filters.push(github ? "is:open" : "state:opened");
-  if (/\bclosed?\b/.test(text)) filters.push(github ? "is:closed" : "state:closed");
+  filters.push(github ? "type:issue" : "issue_type=issue");
+  if (/\bopen(?:ed)?\b/.test(text)) filters.push(github ? "state:open" : "state=opened");
+  if (/\bclosed?\b/.test(text)) filters.push(github ? "state:closed" : "state=closed");
 
   const labels: string[] = [];
   if (/\bsecurity\b/.test(text)) labels.push("security");
@@ -36,27 +40,28 @@ function fallbackQuery(platform: SearchPlatform, request: string, now: Date): st
   if (/\bdocumentation\b|\bdocs?\b/.test(text)) labels.push("documentation");
   if (/\baccessibility\b/.test(text)) labels.push("accessibility");
   if (/\bgood first issues?\b/.test(text)) labels.push("good first issue");
-  filters.push(...labels.map((label) => `label:${label.includes(" ") ? `"${label}"` : label}`));
+  if (github) filters.push(...labels.map((label) => `label:${label.includes(" ") ? `"${label}"` : label}`));
+  else if (labels.length) filters.push(`labels=${encodeURIComponent(labels.join(","))}`);
 
-  if (/\b(?:assigned to me|my issues?)\b/.test(text)) filters.push("assignee:@me");
+  if (/\b(?:assigned to me|my issues?)\b/.test(text)) filters.push(github ? "assignee:@me" : "scope=assigned_to_me");
   if (/\b(?:no|without an?) assignee\b|\bunassigned\b/.test(text)) {
-    filters.push(github ? "no:assignee" : "assignee:none");
+    filters.push(github ? "no:assignee" : "assignee_id=None");
   }
   if (/\bcreated this month\b/.test(text)) {
-    filters.push(github ? `created:>=${firstDayOfMonth(now)}` : `created_after:${firstDayOfMonth(now)}`);
+    filters.push(github ? `created:>=${firstDayOfMonth(now)}` : `created_after=${encodeURIComponent(firstDayOfMonthIso(now))}`);
   }
 
   const comments = text.match(/\b(?:more than|over)\s+(\d+)\s+comments?\b/);
   if (comments && github) filters.push(`comments:>${comments[1]}`);
 
-  return filters.join(" ");
+  return filters.join(github ? " " : "&");
 }
 
 function isUsableQuery(platform: SearchPlatform, query: string): boolean {
   if (!query || query.length > 500 || /[.!?]\s/.test(query)) return false;
   const qualifier = platform === "GitHub"
-    ? /\b(?:is|label|assignee|repo|created|updated|comments|no):\S/i
-    : /\b(?:type|state|label|assignee|project|created_after|created_before|updated_after|updated_before):\S/i;
+    ? /\b(?:type|is|state|label|assignee|repo|created|updated|comments|no):\S/i
+    : /^(?:(?:issue_type|state|scope|assignee_username|assignee_id|author_username|labels|milestone|milestone_id|search|in|confidential|created_after|created_before|updated_after|updated_before|due_date|my_reaction_emoji|weight|order_by|sort)=[^&]*(?:&|$))+$/i;
   return qualifier.test(query);
 }
 
@@ -67,9 +72,17 @@ export function createSearchQuery(
   modelOutput: string,
   now = new Date(),
 ): string {
-  const cleaned = cleanGeneratedQuery(modelOutput).replaceAll("FIRST_DAY_OF_CURRENT_MONTH", firstDayOfMonth(now));
+  const monthStart = platform === "GitHub" ? firstDayOfMonth(now) : encodeURIComponent(firstDayOfMonthIso(now));
+  const cleaned = cleanGeneratedQuery(modelOutput).replaceAll("FIRST_DAY_OF_CURRENT_MONTH", monthStart);
   if (isUsableQuery(platform, cleaned)) return cleaned;
 
   const fallback = fallbackQuery(platform, request, now);
   return fallback || cleaned;
+}
+
+/** Builds a working product URL from the platform-specific generated syntax. */
+export function createSearchUrl(platform: SearchPlatform, query: string): string {
+  if (platform === "GitHub") return `https://github.com/issues?q=${encodeURIComponent(query)}`;
+  const defaultScope = /(?:^|&)scope=/.test(query) ? "" : "scope=all&";
+  return `https://gitlab.com/dashboard/issues?${defaultScope}${query}`;
 }
