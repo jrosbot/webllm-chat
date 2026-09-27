@@ -1,5 +1,9 @@
 export type SearchPlatform = "GitHub" | "GitLab";
 
+// Keeps even unusually token-dense input comfortably within the smallest
+// supported models' context alongside the system prompt and generated answer.
+export const MAX_REQUEST_LENGTH = 1_000;
+
 /**
  * Syntax accepted by the two products. GitLab does not understand GitHub-style
  * `key:value` qualifiers: its issue API/list uses URL query parameters instead.
@@ -24,66 +28,54 @@ export const SEARCH_OPERATORS: Record<SearchPlatform, readonly string[]> = {
   ],
 };
 
-const DRAFT_PROMPTS: Record<SearchPlatform, string> = {
+const TWO_STEP_PROMPTS: Record<SearchPlatform, string> = {
   GitHub: `Convert the request into one GitHub issue search query.
 Use only documented GitHub issue qualifiers. Always add type:issue. Useful qualifiers: state:open|closed, reason:completed|"not planned", author:, assignee:, mentions:, commenter:, involves:, label:, milestone:, repo:, org:, user:, in:title|body|comments, language:, comments:, interactions:, reactions:, created:, updated:, closed:, archived:true|false, is:locked|unlocked, no:label|milestone|assignee|project.
-Use @me for the current user. Quote values containing spaces. Dates support <, <=, >, >= and ranges. Keep genuine free-text terms; do not turn every noun into a label. Return only one query line.
+Use @me for the current user. Quote values containing spaces. Dates support <, <=, >, >= and ranges. Keep genuine free-text terms; do not turn every noun into a label.
+
+Work in two steps in this single response:
+Draft: make the best initial query.
+Final: check the draft against the request and allowed syntax, then correct it.
+Return exactly these two labeled lines and nothing else.
 
 Examples:
 Request: Open bugs assigned to me
-Query: type:issue state:open label:bug assignee:@me
+Draft: type:issue state:open label:bug assignee:@me
+Final: type:issue state:open label:bug assignee:@me
 Request: Good first issues with no assignee
-Query: type:issue label:"good first issue" no:assignee
+Draft: type:issue label:"good first issue" assignee:none
+Final: type:issue label:"good first issue" no:assignee
 Request: Security issues with more than 5 comments
-Query: type:issue security comments:>5
+Draft: type:issue security comments:>5
+Final: type:issue security comments:>5
 Request: Open bugs created this month
-Query: type:issue state:open label:bug created:>=FIRST_DAY_OF_CURRENT_MONTH
+Draft: type:issue state:open label:bug created:>=FIRST_DAY_OF_CURRENT_MONTH
+Final: type:issue state:open label:bug created:>=FIRST_DAY_OF_CURRENT_MONTH
 
-Never invent a username, repository, label, milestone, or date. Never explain the query.`,
+Never invent a username, repository, label, milestone, or date. Do not explain either line.`,
   GitLab: `Convert the request into one GitLab issue filter encoded as URL query parameters (key=value&key=value), not GitHub key:value syntax.
 Use only documented GitLab issue parameters: state=opened|closed|all, scope=assigned_to_me|created_by_me|all, assignee_username=, assignee_id=None|Any, author_username=, labels=comma-separated labels, milestone=, milestone_id=None|Any, issue_type=issue|incident|task, search=, in=title|description|title,description, confidential=true|false, created_after=, created_before=, updated_after=, updated_before=, due_date=, my_reaction_emoji=, weight=, order_by=, sort=.
-Always add issue_type=issue. Use scope=assigned_to_me for issues assigned to me and assignee_id=None for unassigned. Dates must be ISO 8601; use FIRST_DAY_OF_CURRENT_MONTH when requested. Percent-encode spaces in values. GitLab has no comments-count filter. Return only one parameter line without ? or a URL.
+Always add issue_type=issue. Use scope=assigned_to_me for issues assigned to me and assignee_id=None for unassigned. Dates must be ISO 8601; use FIRST_DAY_OF_CURRENT_MONTH when requested. Percent-encode spaces in values. GitLab has no comments-count filter.
+
+Work in two steps in this single response:
+Draft: make the best initial parameter line.
+Final: check the draft against the request and allowed syntax, then correct it.
+Return exactly these two labeled lines and nothing else. Neither line may contain ? or a URL.
 
 Examples:
 Request: Open bugs assigned to me
-Query: issue_type=issue&state=opened&labels=bug&scope=assigned_to_me
+Draft: issue_type=issue&state=opened&labels=bug&scope=assigned_to_me
+Final: issue_type=issue&state=opened&labels=bug&scope=assigned_to_me
 Request: Good first issues with no assignee
-Query: issue_type=issue&labels=good%20first%20issue&assignee_id=None
+Draft: issue_type=issue&labels=good%20first%20issue&assignee_username=None
+Final: issue_type=issue&labels=good%20first%20issue&assignee_id=None
 Request: Closed security issues
-Query: issue_type=issue&state=closed&search=security
+Draft: issue_type=issue&state=closed&search=security
+Final: issue_type=issue&state=closed&search=security
 
-Never invent a username, project, label, milestone, or date. Never explain the filter.`,
+Never invent a username, project, label, milestone, or date. Do not explain either line.`,
 };
 
-const REFINEMENT_PROMPTS: Record<SearchPlatform, string> = {
-  GitHub: `Correct a draft GitHub issue query to match the request. Output one line only.
-Use documented GitHub syntax and type:issue. Valid families: state:, reason:, author:, assignee:, mentions:, commenter:, involves:, label:, milestone:, repo:, org:, user:, in:, language:, comments:, interactions:, reactions:, created:, updated:, closed:, archived:, is:locked|unlocked, no:label|milestone|assignee|project. Use assignee:@me and no:assignee. Quote multi-word values. Keep free text when the request does not explicitly name a label. Remove explanations, URLs, and invented values.
-
-Request: Documentation issues without an assignee
-Draft: status:open documentation assignee:none
-Final: type:issue documentation no:assignee
-Request: Security issues with more than 5 comments
-Draft: security comments more than 5
-Final: type:issue security comments:>5`,
-  GitLab: `Correct a draft into documented GitLab issue URL parameters matching the request. Output one line only, without ? or a URL.
-GitLab filters are key=value pairs joined by &, not key:value qualifiers. Use issue_type=issue and only: state, scope, assignee_username, assignee_id, author_username, labels, milestone, milestone_id, search, in, confidential, created_after, created_before, updated_after, updated_before, due_date, my_reaction_emoji, weight, order_by, sort. Use scope=assigned_to_me for me and assignee_id=None for unassigned. Percent-encode values. Do not create unsupported comment-count or project parameters. Put unmatched text in search=. Remove explanations and invented values.
-
-Request: Documentation issues without an assignee
-Draft: type:issue documentation no:assignee
-Final: issue_type=issue&search=documentation&assignee_id=None
-Request: Closed security issues
-Draft: type:issue state:closed label:security
-Final: issue_type=issue&state=closed&search=security`,
-};
-
-export function createDraftPrompt(platform: SearchPlatform): string {
-  return DRAFT_PROMPTS[platform];
-}
-
-export function createRefinementPrompt(platform: SearchPlatform): string {
-  return REFINEMENT_PROMPTS[platform];
-}
-
-export function createRefinementRequest(request: string, draft: string): string {
-  return `Request: ${request}\nDraft: ${draft}\nFinal:`;
+export function createTwoStepPrompt(platform: SearchPlatform): string {
+  return TWO_STEP_PROMPTS[platform];
 }

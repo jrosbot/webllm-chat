@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { cleanGeneratedQuery, createSearchQuery, createSearchUrl } from "../src/searchQuery.ts";
-import { createDraftPrompt } from "../src/searchPrompt.ts";
+import { createTwoStepPrompt, MAX_REQUEST_LENGTH } from "../src/searchPrompt.ts";
 
 test("replaces a repeated request with a deterministic GitHub query", () => {
   const request = "Open security bugs created this month with more than 5 comments";
@@ -22,6 +22,13 @@ test("keeps a valid model query and removes trailing chat", () => {
 
 test("preserves quoted multi-word labels", () => {
   assert.equal(cleanGeneratedQuery('```text\nQuery: is:issue label:"good first issue"\n```'), 'is:issue label:"good first issue"');
+});
+
+test("uses the corrected final line from a single two-step response", () => {
+  assert.equal(
+    cleanGeneratedQuery("Draft: type:issue status:open security\nFinal: type:issue state:open security"),
+    "type:issue state:open security",
+  );
 });
 
 test("uses GitLab URL parameters in its fallback", () => {
@@ -48,7 +55,23 @@ test("uses ISO 8601 for a GitLab month boundary", () => {
 });
 
 test("prompts distinguish GitHub qualifiers from GitLab parameters", () => {
-  assert.match(createDraftPrompt("GitHub"), /comments:/);
-  assert.match(createDraftPrompt("GitLab"), /URL query parameters/);
-  assert.doesNotMatch(createDraftPrompt("GitLab"), /type:issue/);
+  assert.match(createTwoStepPrompt("GitHub"), /comments:/);
+  assert.match(createTwoStepPrompt("GitLab"), /URL query parameters/);
+  assert.doesNotMatch(createTwoStepPrompt("GitLab"), /type:issue/);
+  assert.match(createTwoStepPrompt("GitHub"), /two steps in this single response/i);
+});
+
+test("two-step prompts demonstrate both the draft and expected final format", () => {
+  for (const platform of ["GitHub", "GitLab"] as const) {
+    const prompt = createTwoStepPrompt(platform);
+    assert.ok((prompt.match(/^Request:/gm) ?? []).length >= 3);
+    assert.equal((prompt.match(/^Draft:/gm) ?? []).length, (prompt.match(/^Request:/gm) ?? []).length + 1);
+    assert.equal((prompt.match(/^Final:/gm) ?? []).length, (prompt.match(/^Request:/gm) ?? []).length + 1);
+  }
+});
+
+test("request limit leaves room for prompts and the two-step answer", () => {
+  assert.equal(MAX_REQUEST_LENGTH, 1_000);
+  assert.ok(createTwoStepPrompt("GitHub").length < 3_000);
+  assert.ok(createTwoStepPrompt("GitLab").length < 3_000);
 });

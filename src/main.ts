@@ -1,5 +1,5 @@
 import * as webllm from "@mlc-ai/web-llm";
-import { createDraftPrompt, createRefinementPrompt, createRefinementRequest, type SearchPlatform } from "./searchPrompt";
+import { createTwoStepPrompt, MAX_REQUEST_LENGTH, type SearchPlatform } from "./searchPrompt";
 import { renderOperatorReference } from "./operatorReference";
 import { createSearchQuery, createSearchUrl } from "./searchQuery";
 import "./style.css";
@@ -53,7 +53,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
         </div>
       </div>
 
-      <textarea id="description" rows="4" placeholder="e.g. Open accessibility bugs assigned to me, created this month, with more than 5 comments…" aria-label="Issue description"></textarea>
+      <textarea id="description" rows="4" maxlength="${MAX_REQUEST_LENGTH}" placeholder="e.g. Open accessibility bugs assigned to me, created this month, with more than 5 comments…" aria-label="Issue description"></textarea>
       <div class="examples">
         <span>TRY AN EXAMPLE</span>
         <button data-example="Good first issues in TypeScript repositories with no assignee">Good first issues</button>
@@ -219,23 +219,12 @@ generate.addEventListener("click", async () => {
   try {
     const llm = await loadEngine();
     generate.querySelector("span")!.textContent = "Generating…";
-    const draftResponse = await llm.chat.completions.create({
-      temperature: 0.1,
-      max_tokens: 64,
-      messages: [
-        { role: "system", content: createDraftPrompt(platform) },
-        { role: "user", content: request },
-      ],
-    });
-    const draft = draftResponse.choices[0]?.message?.content?.trim() ?? "";
-    if (!draft) throw new Error("The model returned an empty draft. Please try again.");
-    generate.querySelector("span")!.textContent = "Refining…";
     const response = await llm.chat.completions.create({
       temperature: 0.1,
-      max_tokens: 64,
+      max_tokens: 128,
       messages: [
-        { role: "system", content: createRefinementPrompt(platform) },
-        { role: "user", content: createRefinementRequest(request, draft) },
+        { role: "system", content: createTwoStepPrompt(platform) },
+        { role: "user", content: request },
       ],
     });
     const output = createSearchQuery(platform, request, response.choices[0]?.message?.content ?? "");
