@@ -1,5 +1,5 @@
 import { pipeline, type TextGenerationPipeline } from "@huggingface/transformers";
-import { createSearchPrompt, type SearchPlatform } from "./searchPrompt";
+import { createDraftPrompt, createRefinementPrompt, createRefinementRequest, type SearchPlatform } from "./searchPrompt";
 import "./style.css";
 
 const MODELS = [
@@ -214,9 +214,22 @@ generate.addEventListener("click", async () => {
   try {
     const llm = await loadEngine();
     generate.querySelector("span")!.textContent = "Generating…";
-    const response = await llm([
-      { role: "system", content: createSearchPrompt(platform) },
+    const draftResponse = await llm([
+      { role: "system", content: createDraftPrompt(platform) },
       { role: "user", content: request },
+    ], {
+      max_new_tokens: 120,
+      do_sample: false,
+      return_full_text: false,
+    });
+    const generatedDraft = draftResponse[0]?.generated_text;
+    const draftContent = typeof generatedDraft === "string" ? generatedDraft : generatedDraft?.at(-1)?.content;
+    const draft = typeof draftContent === "string" ? draftContent.trim() : "";
+    if (!draft) throw new Error("The model returned an empty draft. Please try again.");
+    generate.querySelector("span")!.textContent = "Refining…";
+    const response = await llm([
+      { role: "system", content: createRefinementPrompt(platform) },
+      { role: "user", content: createRefinementRequest(request, draft) },
     ], {
       max_new_tokens: 120,
       do_sample: false,
