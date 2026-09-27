@@ -29,9 +29,20 @@ export const SEARCH_OPERATORS: Record<SearchPlatform, readonly string[]> = {
 };
 
 const TWO_STEP_PROMPTS: Record<SearchPlatform, string> = {
-  GitHub: `Convert the request into one GitHub issue search query.
-Use only documented GitHub issue qualifiers. Always add type:issue. Useful qualifiers: state:open|closed, reason:completed|"not planned", author:, assignee:, mentions:, commenter:, involves:, label:, milestone:, repo:, org:, user:, in:title|body|comments, language:, comments:, interactions:, reactions:, created:, updated:, closed:, archived:true|false, is:locked|unlocked, no:label|milestone|assignee|project.
-Use @me for the current user. Quote values containing spaces. Dates support <, <=, >, >= and ranges. Keep genuine free-text terms; do not turn every noun into a label.
+  GitHub: `You translate a plain-language request into exactly one GitHub issue search query.
+
+ALLOWED QUALIFIERS (use no others):
+- Kind/status: type:issue (is:issue is equivalent), state:open|closed, reason:completed|"not planned"
+- People: author:USER, assignee:USER, mentions:USER, commenter:USER, involves:USER
+- Classification/location: label:LABEL, milestone:NAME, repo:OWNER/REPO, org:ORG, user:OWNER
+- Content: in:title|body|comments, language:LANGUAGE
+- Counts: comments:N, interactions:N, reactions:N
+- Dates: created:DATE, updated:DATE, closed:DATE
+- Repository/issue properties: archived:true|false, is:locked|unlocked
+- Missing metadata: no:label|milestone|assignee|project
+
+Always include type:issue. A programming language is language:LANGUAGE: for example, TypeScript becomes language:TypeScript, never a label or a free-text term. Use label: only when the request describes an issue label such as bug, documentation, security, or "good first issue". Keep other genuine search words as free text.
+Use @me for the current user. Quote multi-word qualifier values. N accepts comparisons such as >5. DATE accepts YYYY-MM-DD, <, <=, >, >=, and ranges such as 2026-01-01..2026-01-31.
 
 Work in two steps in this single response:
 Draft: make the best initial query.
@@ -45,6 +56,9 @@ Final: type:issue state:open label:bug assignee:@me
 Request: Good first issues with no assignee
 Draft: type:issue label:"good first issue" assignee:none
 Final: type:issue label:"good first issue" no:assignee
+Request: Good first issues in TypeScript repositories with no assignee
+Draft: type:issue label:"good first issue" TypeScript no:assignee
+Final: type:issue label:"good first issue" language:TypeScript no:assignee
 Request: Security issues with more than 5 comments
 Draft: type:issue security comments:>5
 Final: type:issue security comments:>5
