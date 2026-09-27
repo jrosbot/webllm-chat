@@ -7,8 +7,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        webllm: resolve(import.meta.dirname, "index.html"),
+        index: resolve(import.meta.dirname, "index.html"),
         transformersjs: resolve(import.meta.dirname, "transformersjs.html"),
+        webllm: resolve(import.meta.dirname, "webllm.html"),
       },
     },
   },
