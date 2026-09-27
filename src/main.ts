@@ -1,5 +1,6 @@
 import * as webllm from "@mlc-ai/web-llm";
 import { createDraftPrompt, createRefinementPrompt, createRefinementRequest, type SearchPlatform } from "./searchPrompt";
+import { createSearchQuery } from "./searchQuery";
 import "./style.css";
 
 const MODELS = [
@@ -213,7 +214,7 @@ generate.addEventListener("click", async () => {
     generate.querySelector("span")!.textContent = "Generating…";
     const draftResponse = await llm.chat.completions.create({
       temperature: 0.1,
-      max_tokens: 120,
+      max_tokens: 64,
       messages: [
         { role: "system", content: createDraftPrompt(platform) },
         { role: "user", content: request },
@@ -224,13 +225,13 @@ generate.addEventListener("click", async () => {
     generate.querySelector("span")!.textContent = "Refining…";
     const response = await llm.chat.completions.create({
       temperature: 0.1,
-      max_tokens: 120,
+      max_tokens: 64,
       messages: [
         { role: "system", content: createRefinementPrompt(platform) },
         { role: "user", content: createRefinementRequest(request, draft) },
       ],
     });
-    const output = response.choices[0]?.message?.content?.trim().replace(/^`+|`+$/g, "") ?? "";
+    const output = createSearchQuery(platform, request, response.choices[0]?.message?.content ?? "");
     if (!output) throw new Error("The model returned an empty query. Please try again.");
     query.textContent = output;
     openSearch.href = platform === "GitHub"
