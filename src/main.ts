@@ -1,5 +1,5 @@
 import * as webllm from "@mlc-ai/web-llm";
-import { createSearchPrompt, type SearchPlatform } from "./searchPrompt";
+import { createDraftPrompt, createRefinementPrompt, createRefinementRequest, type SearchPlatform } from "./searchPrompt";
 import "./style.css";
 
 const MODELS = [
@@ -211,12 +211,23 @@ generate.addEventListener("click", async () => {
   try {
     const llm = await loadEngine();
     generate.querySelector("span")!.textContent = "Generating…";
+    const draftResponse = await llm.chat.completions.create({
+      temperature: 0.1,
+      max_tokens: 120,
+      messages: [
+        { role: "system", content: createDraftPrompt(platform) },
+        { role: "user", content: request },
+      ],
+    });
+    const draft = draftResponse.choices[0]?.message?.content?.trim() ?? "";
+    if (!draft) throw new Error("The model returned an empty draft. Please try again.");
+    generate.querySelector("span")!.textContent = "Refining…";
     const response = await llm.chat.completions.create({
       temperature: 0.1,
       max_tokens: 120,
       messages: [
-        { role: "system", content: createSearchPrompt(platform) },
-        { role: "user", content: request },
+        { role: "system", content: createRefinementPrompt(platform) },
+        { role: "user", content: createRefinementRequest(request, draft) },
       ],
     });
     const output = response.choices[0]?.message?.content?.trim().replace(/^`+|`+$/g, "") ?? "";

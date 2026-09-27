@@ -1,37 +1,71 @@
 export type SearchPlatform = "GitHub" | "GitLab";
 
-const COMMON_RULES = `
-Return a single issue-search query, not a sentence.
-- Preserve useful free-text terms from the request and quote multi-word values.
-- Add a facet only when the request supplies its value; do not guess repositories, users, labels, dates, or states.
-- Use each platform's exact facet name and value syntax. Never invent a facet.
-- Resolve “me”, “my”, and “assigned to me” to @me.
-- Output exactly one line containing only the query: no Markdown, commentary, surrounding quotation marks, or URL.`;
+const DRAFT_PROMPTS: Record<SearchPlatform, string> = {
+  GitHub: `Convert the request into one GitHub Issues search query.
+Use only words from the request and these filters: is:issue, is:open, is:closed, assignee:, label:, repo:, created:, updated:, comments:, no:assignee.
+Use assignee:@me for "me". Quote multi-word labels. Return only the query on one line.
 
-const PLATFORM_GUIDANCE: Record<SearchPlatform, string> = {
-  GitHub: `You convert a natural-language request into one valid GitHub Issues search query.
+Examples:
+Request: Open bugs assigned to me
+Query: is:issue is:open label:bug assignee:@me
+Request: Good first issues with no assignee
+Query: is:issue label:"good first issue" no:assignee
+Request: Security issues with more than 5 comments
+Query: is:issue label:security comments:>5`,
+  GitLab: `Convert the request into one GitLab issue search query.
+Use only words from the request and these filters: type:issue, state:opened, state:closed, assignee:, label:, project:, created_after:, created_before:, updated_after:, updated_before:.
+Use assignee:@me for "me" and assignee:none for no assignee. Quote multi-word labels. Return only the query on one line.
 
-Allowed GitHub facets:
-- kind/status: is:issue, is:pr, is:open, is:closed, state:open, state:closed, draft:true|false
-- people: author:, assignee:, mentions:, commenter:, involves:, review-requested:, reviewed-by:
-- classification: label:, milestone:, project:, type:, reason:, linked:pr
-- location/text: repo:OWNER/REPO, org:, user:, in:title|body|comments
-- activity: created:, updated:, closed:, merged:, comments:, interactions:, reactions:
-- missing metadata: no:assignee|label|milestone|project
-Dates and numeric facets may use >, >=, <, <=, or ranges (for example, updated:>=2025-01-01 and comments:>10). Negate a facet with a leading hyphen when requested.
-GitHub does not have status:, assigned:, or title: facets: translate them to state:/is:, assignee:, and in:title respectively.`,
-  GitLab: `You convert a natural-language request into one valid GitLab issue search query.
-
-Allowed GitLab facets:
-- kind/status: type:issue, type:incident, state:opened, state:closed
-- people: author:, assignee:
-- classification: label:, milestone:
-- location/text: project:, group:, in:title|description
-- activity: created_after:, created_before:, updated_after:, updated_before:
-Use opened (not open) for an open GitLab issue. Use none as the value when explicitly searching for an unassigned issue or one without a label or milestone.
-GitLab does not have status:, assigned:, or title: facets: translate them to state:, assignee:, and in:title respectively.`,
+Examples:
+Request: Open bugs assigned to me
+Query: type:issue state:opened label:bug assignee:@me
+Request: Good first issues with no assignee
+Query: type:issue label:"good first issue" assignee:none
+Request: Closed security issues
+Query: type:issue state:closed label:security`,
 };
 
-export function createSearchPrompt(platform: SearchPlatform): string {
-  return `${PLATFORM_GUIDANCE[platform]}\n${COMMON_RULES}`;
+const REFINEMENT_PROMPTS: Record<SearchPlatform, string> = {
+  GitHub: `Improve a draft GitHub Issues search query so it matches the original request.
+The final query must use valid GitHub syntax. Keep requested search words. Remove explanations, Markdown, URLs, invented values, and invalid filters.
+Use is:issue for issues, is:open or is:closed for state, assignee:@me for me, no:assignee for unassigned, label:"multi word", and comparisons such as comments:>5 or updated:<2026-01-01.
+Return only the improved query on one line.
+
+Examples:
+Request: Open accessibility bugs assigned to me
+Draft: status:open accessibility assigned:me
+Final: is:issue is:open label:accessibility assignee:@me
+Request: Documentation issues without an assignee
+Draft: is:issue documentation assignee:none
+Final: is:issue label:documentation no:assignee
+Request: Security issues with more than 5 comments
+Draft: security comments more than 5
+Final: is:issue label:security comments:>5`,
+  GitLab: `Improve a draft GitLab issue search query so it matches the original request.
+The final query must use valid GitLab syntax. Keep requested search words. Remove explanations, Markdown, URLs, invented values, and invalid filters.
+Use type:issue for issues, state:opened or state:closed for state, assignee:@me for me, assignee:none for unassigned, label:"multi word", and explicit date filters such as updated_before:2026-01-01.
+Return only the improved query on one line.
+
+Examples:
+Request: Open accessibility bugs assigned to me
+Draft: status:open accessibility assigned:me
+Final: type:issue state:opened label:accessibility assignee:@me
+Request: Documentation issues without an assignee
+Draft: type:issue documentation no:assignee
+Final: type:issue label:documentation assignee:none
+Request: Closed security issues
+Draft: type:issue state:closed security
+Final: type:issue state:closed label:security`,
+};
+
+export function createDraftPrompt(platform: SearchPlatform): string {
+  return DRAFT_PROMPTS[platform];
+}
+
+export function createRefinementPrompt(platform: SearchPlatform): string {
+  return REFINEMENT_PROMPTS[platform];
+}
+
+export function createRefinementRequest(request: string, draft: string): string {
+  return `Request: ${request}\nDraft: ${draft}\nFinal:`;
 }
