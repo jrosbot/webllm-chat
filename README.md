@@ -1,6 +1,6 @@
 # Issue Query
 
-A private, browser-only assistant that turns natural-language descriptions into GitHub or GitLab issue search queries. The model runs locally with WebLLM and WebGPU; no prompt is sent to an application server.
+A private, browser-only assistant that turns natural-language descriptions into GitHub or GitLab issue search queries. The model runs locally with Transformers.js or WebLLM and WebGPU; no prompt is sent to an application server.
 
 ## Local development
 
@@ -27,4 +27,4 @@ The built-in `GITHUB_TOKEN` cannot enable Pages, which is why the workflow expli
 
 The Vite build uses relative asset paths, so it works for both user sites and project sites without changing a repository name in configuration.
 
-Each deployment includes two linked pages: `index.html` contains the WebLLM version, while `transformersjs.html` contains the Transformers.js alternative. Vite builds both entry points together, so users can switch implementations without a separate deployment.
+Each deployment defaults to the Transformers.js version at `index.html` (with `transformersjs.html` kept as a direct alias), while `webllm.html` contains the WebLLM alternative. Vite builds all entry points together, so users can switch implementations without a separate deployment.

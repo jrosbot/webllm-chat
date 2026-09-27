@@ -26,7 +26,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <span>ISSUE QUERY</span>
     </a>
     <div class="header-actions">
-      <a class="backend-link" href="./index.html">← Use WebLLM</a>
+      <a class="backend-link" href="./webllm.html">Use WebLLM →</a>
       <div class="local-pill"><span class="pulse"></span> RUNS LOCALLY</div>
     </div>
   </header>
