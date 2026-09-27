@@ -1,5 +1,6 @@
 import { pipeline, type TextGenerationPipeline } from "@huggingface/transformers";
 import { createDraftPrompt, createRefinementPrompt, createRefinementRequest, type SearchPlatform } from "./searchPrompt";
+import { createSearchQuery } from "./searchQuery";
 import "./style.css";
 
 const MODELS = [
@@ -218,7 +219,7 @@ generate.addEventListener("click", async () => {
       { role: "system", content: createDraftPrompt(platform) },
       { role: "user", content: request },
     ], {
-      max_new_tokens: 120,
+      max_new_tokens: 64,
       do_sample: false,
       return_full_text: false,
     });
@@ -231,13 +232,13 @@ generate.addEventListener("click", async () => {
       { role: "system", content: createRefinementPrompt(platform) },
       { role: "user", content: createRefinementRequest(request, draft) },
     ], {
-      max_new_tokens: 120,
+      max_new_tokens: 64,
       do_sample: false,
       return_full_text: false,
     });
     const generated = response[0]?.generated_text;
     const lastContent = typeof generated === "string" ? generated : generated?.at(-1)?.content;
-    const output = (typeof lastContent === "string" ? lastContent : "").trim().replace(/^`+|`+$/g, "");
+    const output = createSearchQuery(platform, request, typeof lastContent === "string" ? lastContent : "");
     if (!output) throw new Error("The model returned an empty query. Please try again.");
     query.textContent = output;
     openSearch.href = platform === "GitHub"
