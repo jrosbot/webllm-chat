@@ -1,6 +1,7 @@
 import * as webllm from "@mlc-ai/web-llm";
 import { createDraftPrompt, createRefinementPrompt, createRefinementRequest, type SearchPlatform } from "./searchPrompt";
-import { createSearchQuery } from "./searchQuery";
+import { renderOperatorReference } from "./operatorReference";
+import { createSearchQuery, createSearchUrl } from "./searchQuery";
 import "./style.css";
 
 const MODELS = [
@@ -59,6 +60,10 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
         <button data-example="Open security bugs created this month with more than 5 comments">Recent security bugs</button>
         <button data-example="Documentation issues assigned to me that have not been updated in 30 days">Stale docs assigned to me</button>
       </div>
+      <details class="operator-reference">
+        <summary>Real search operators <span>REFERENCE</span></summary>
+        <div id="operator-reference-content">${renderOperatorReference("GitHub")}</div>
+      </details>
 
       <div class="model-picker">
         <label for="model">LOCAL MODEL</label>
@@ -119,6 +124,7 @@ const downloadDetail = document.querySelector<HTMLSpanElement>("#download-detail
 const resetDownload = document.querySelector<HTMLButtonElement>("#reset-download")!;
 const modelSelect = document.querySelector<HTMLSelectElement>("#model")!;
 const modelNote = document.querySelector<HTMLSpanElement>("#model-note")!;
+const operatorReference = document.querySelector<HTMLDivElement>("#operator-reference-content")!;
 let stallTimer: number | undefined;
 
 function selectedModel() {
@@ -141,6 +147,7 @@ function armStallWarning() {
 document.querySelectorAll<HTMLButtonElement>(".platform-button").forEach((button) => {
   button.addEventListener("click", () => {
     platform = button.dataset.platform as SearchPlatform;
+    operatorReference.innerHTML = renderOperatorReference(platform);
     document.querySelectorAll<HTMLButtonElement>(".platform-button").forEach((item) => {
       const active = item === button;
       item.classList.toggle("active", active);
@@ -234,9 +241,7 @@ generate.addEventListener("click", async () => {
     const output = createSearchQuery(platform, request, response.choices[0]?.message?.content ?? "");
     if (!output) throw new Error("The model returned an empty query. Please try again.");
     query.textContent = output;
-    openSearch.href = platform === "GitHub"
-      ? `https://github.com/issues?q=${encodeURIComponent(output)}`
-      : `https://gitlab.com/dashboard/issues?search=${encodeURIComponent(output)}`;
+    openSearch.href = createSearchUrl(platform, output);
     result.hidden = false;
   } catch (reason) {
     window.clearTimeout(stallTimer);

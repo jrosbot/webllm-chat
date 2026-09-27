@@ -1,74 +1,79 @@
 export type SearchPlatform = "GitHub" | "GitLab";
 
+/**
+ * Syntax accepted by the two products. GitLab does not understand GitHub-style
+ * `key:value` qualifiers: its issue API/list uses URL query parameters instead.
+ */
+export const SEARCH_OPERATORS: Record<SearchPlatform, readonly string[]> = {
+  GitHub: [
+    "type:issue (or is:issue)", "state:open | state:closed", "reason:completed | reason:\"not planned\"",
+    "author:USER", "assignee:USER", "mentions:USER", "commenter:USER", "involves:USER",
+    "label:LABEL", "milestone:NAME", "repo:OWNER/REPO", "org:ORG", "user:OWNER",
+    "in:title | in:body | in:comments", "language:LANGUAGE", "comments:N", "interactions:N", "reactions:N",
+    "created:DATE", "updated:DATE", "closed:DATE", "archived:true | archived:false",
+    "is:locked | is:unlocked", "no:label | no:milestone | no:assignee | no:project",
+  ],
+  GitLab: [
+    "state=opened | closed | all", "scope=assigned_to_me | created_by_me | all",
+    "assignee_username=USER", "assignee_id=None | Any", "author_username=USER",
+    "labels=LABEL1,LABEL2", "milestone=NAME", "milestone_id=None | Any", "issue_type=issue | incident | task",
+    "search=TEXT", "in=title | description | title,description", "confidential=true | false",
+    "created_after=ISO_DATE", "created_before=ISO_DATE", "updated_after=ISO_DATE", "updated_before=ISO_DATE",
+    "due_date=today | tomorrow | overdue | week | month | 0 | any", "my_reaction_emoji=EMOJI",
+    "weight=N | None | Any", "not[labels]=LABEL", "order_by=created_at | updated_at | due_date", "sort=asc | desc",
+  ],
+};
+
 const DRAFT_PROMPTS: Record<SearchPlatform, string> = {
-  GitHub: `Convert the request into one GitHub Issues search query.
-Use only words from the request and these filters: is:issue, is:open, is:closed, assignee:, label:, repo:, created:, updated:, comments:, no:assignee.
-Use assignee:@me for "me". Quote multi-word labels. Return only the query on one line.
+  GitHub: `Convert the request into one GitHub issue search query.
+Use only documented GitHub issue qualifiers. Always add type:issue. Useful qualifiers: state:open|closed, reason:completed|"not planned", author:, assignee:, mentions:, commenter:, involves:, label:, milestone:, repo:, org:, user:, in:title|body|comments, language:, comments:, interactions:, reactions:, created:, updated:, closed:, archived:true|false, is:locked|unlocked, no:label|milestone|assignee|project.
+Use @me for the current user. Quote values containing spaces. Dates support <, <=, >, >= and ranges. Keep genuine free-text terms; do not turn every noun into a label. Return only one query line.
 
 Examples:
 Request: Open bugs assigned to me
-Query: is:issue is:open label:bug assignee:@me
+Query: type:issue state:open label:bug assignee:@me
 Request: Good first issues with no assignee
-Query: is:issue label:"good first issue" no:assignee
+Query: type:issue label:"good first issue" no:assignee
 Request: Security issues with more than 5 comments
-Query: is:issue label:security comments:>5
-Request: Open security bugs created this month with more than 5 comments
-Query: is:issue is:open label:security label:bug created:>=FIRST_DAY_OF_CURRENT_MONTH comments:>5
+Query: type:issue security comments:>5
+Request: Open bugs created this month
+Query: type:issue state:open label:bug created:>=FIRST_DAY_OF_CURRENT_MONTH
 
-Never repeat the request or the examples. Stop immediately after the query.`,
-  GitLab: `Convert the request into one GitLab issue search query.
-Use only words from the request and these filters: type:issue, state:opened, state:closed, assignee:, label:, project:, created_after:, created_before:, updated_after:, updated_before:.
-Use assignee:@me for "me" and assignee:none for no assignee. Quote multi-word labels. Return only the query on one line.
+Never invent a username, repository, label, milestone, or date. Never explain the query.`,
+  GitLab: `Convert the request into one GitLab issue filter encoded as URL query parameters (key=value&key=value), not GitHub key:value syntax.
+Use only documented GitLab issue parameters: state=opened|closed|all, scope=assigned_to_me|created_by_me|all, assignee_username=, assignee_id=None|Any, author_username=, labels=comma-separated labels, milestone=, milestone_id=None|Any, issue_type=issue|incident|task, search=, in=title|description|title,description, confidential=true|false, created_after=, created_before=, updated_after=, updated_before=, due_date=, my_reaction_emoji=, weight=, order_by=, sort=.
+Always add issue_type=issue. Use scope=assigned_to_me for issues assigned to me and assignee_id=None for unassigned. Dates must be ISO 8601; use FIRST_DAY_OF_CURRENT_MONTH when requested. Percent-encode spaces in values. GitLab has no comments-count filter. Return only one parameter line without ? or a URL.
 
 Examples:
 Request: Open bugs assigned to me
-Query: type:issue state:opened label:bug assignee:@me
+Query: issue_type=issue&state=opened&labels=bug&scope=assigned_to_me
 Request: Good first issues with no assignee
-Query: type:issue label:"good first issue" assignee:none
+Query: issue_type=issue&labels=good%20first%20issue&assignee_id=None
 Request: Closed security issues
-Query: type:issue state:closed label:security
+Query: issue_type=issue&state=closed&search=security
 
-Never repeat the request or the examples. Stop immediately after the query.`,
+Never invent a username, project, label, milestone, or date. Never explain the filter.`,
 };
 
 const REFINEMENT_PROMPTS: Record<SearchPlatform, string> = {
-  GitHub: `Improve a draft GitHub Issues search query so it matches the original request.
-The final query must use valid GitHub syntax. Keep requested search words. Remove explanations, Markdown, URLs, invented values, and invalid filters.
-Use is:issue for issues, is:open or is:closed for state, assignee:@me for me, no:assignee for unassigned, label:"multi word", and comparisons such as comments:>5 or updated:<2026-01-01.
-Return only the improved query on one line.
+  GitHub: `Correct a draft GitHub issue query to match the request. Output one line only.
+Use documented GitHub syntax and type:issue. Valid families: state:, reason:, author:, assignee:, mentions:, commenter:, involves:, label:, milestone:, repo:, org:, user:, in:, language:, comments:, interactions:, reactions:, created:, updated:, closed:, archived:, is:locked|unlocked, no:label|milestone|assignee|project. Use assignee:@me and no:assignee. Quote multi-word values. Keep free text when the request does not explicitly name a label. Remove explanations, URLs, and invented values.
 
-Examples:
-Request: Open accessibility bugs assigned to me
-Draft: status:open accessibility assigned:me
-Final: is:issue is:open label:accessibility assignee:@me
 Request: Documentation issues without an assignee
-Draft: is:issue documentation assignee:none
-Final: is:issue label:documentation no:assignee
+Draft: status:open documentation assignee:none
+Final: type:issue documentation no:assignee
 Request: Security issues with more than 5 comments
 Draft: security comments more than 5
-Final: is:issue label:security comments:>5
-Request: Open security bugs created this month with more than 5 comments
-Draft: Open security bugs created this month with more than 5 comments. Example: Open security bugs created this month with more than 5 comments
-Final: is:issue is:open label:security label:bug created:>=FIRST_DAY_OF_CURRENT_MONTH comments:>5
+Final: type:issue security comments:>5`,
+  GitLab: `Correct a draft into documented GitLab issue URL parameters matching the request. Output one line only, without ? or a URL.
+GitLab filters are key=value pairs joined by &, not key:value qualifiers. Use issue_type=issue and only: state, scope, assignee_username, assignee_id, author_username, labels, milestone, milestone_id, search, in, confidential, created_after, created_before, updated_after, updated_before, due_date, my_reaction_emoji, weight, order_by, sort. Use scope=assigned_to_me for me and assignee_id=None for unassigned. Percent-encode values. Do not create unsupported comment-count or project parameters. Put unmatched text in search=. Remove explanations and invented values.
 
-Never repeat the request, draft, or examples. Stop immediately after the query.`,
-  GitLab: `Improve a draft GitLab issue search query so it matches the original request.
-The final query must use valid GitLab syntax. Keep requested search words. Remove explanations, Markdown, URLs, invented values, and invalid filters.
-Use type:issue for issues, state:opened or state:closed for state, assignee:@me for me, assignee:none for unassigned, label:"multi word", and explicit date filters such as updated_before:2026-01-01.
-Return only the improved query on one line.
-
-Examples:
-Request: Open accessibility bugs assigned to me
-Draft: status:open accessibility assigned:me
-Final: type:issue state:opened label:accessibility assignee:@me
 Request: Documentation issues without an assignee
 Draft: type:issue documentation no:assignee
-Final: type:issue label:documentation assignee:none
+Final: issue_type=issue&search=documentation&assignee_id=None
 Request: Closed security issues
-Draft: type:issue state:closed security
-Final: type:issue state:closed label:security
-
-Never repeat the request, draft, or examples. Stop immediately after the query.`,
+Draft: type:issue state:closed label:security
+Final: issue_type=issue&state=closed&search=security`,
 };
 
 export function createDraftPrompt(platform: SearchPlatform): string {
