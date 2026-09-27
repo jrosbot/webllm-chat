@@ -8,18 +8,21 @@ const MODELS = [
   {
     id: "HuggingFaceTB/SmolLM2-135M-Instruct",
     device: "wasm",
-    label: "SmolLM2 135M Q4 · CPU",
-    note: "Smallest model · quantized · works without WebGPU",
+    dtype: "q2",
+    label: "SmolLM2 135M Q2 · CPU",
+    note: "Smallest 2-bit model · works without WebGPU",
   },
   {
     id: "HuggingFaceTB/SmolLM2-360M-Instruct",
     device: "webgpu",
+    dtype: "q4",
     label: "SmolLM2 360M · balanced",
     note: "Better results · moderate download",
   },
   {
     id: "HuggingFaceTB/SmolLM2-1.7B-Instruct",
     device: "webgpu",
+    dtype: "q4",
     label: "SmolLM2 1.7B · quality",
     note: "Best results · largest download and memory use",
   },
@@ -171,7 +174,7 @@ async function loadEngine() {
   if (!loading) {
     const model = selectedModel();
     if (model.device === "webgpu" && !("gpu" in navigator)) {
-      throw new Error("WebGPU is not available. Choose the SmolLM2 135M Q4 CPU model instead.");
+      throw new Error("WebGPU is not available. Choose the SmolLM2 135M Q2 CPU model instead.");
     }
     modelSelect.disabled = true;
     status.textContent = "Downloading model…";
@@ -189,7 +192,7 @@ async function loadEngine() {
     };
     loading = pipeline("text-generation", model.id, {
       device: model.device,
-      dtype: "q4",
+      dtype: model.dtype,
       progress_callback: (event: { status: string; progress?: number }) => {
         if (event.status === "progress" && event.progress !== undefined) updateProgress(event.progress);
       },
