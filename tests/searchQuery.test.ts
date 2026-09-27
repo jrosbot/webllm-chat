@@ -61,6 +61,21 @@ test("prompts distinguish GitHub qualifiers from GitLab parameters", () => {
   assert.match(createTwoStepPrompt("GitHub"), /two steps in this single response/i);
 });
 
+test("GitHub prompt teaches the complete qualifier vocabulary and language mapping", () => {
+  const prompt = createTwoStepPrompt("GitHub");
+  const qualifierFamilies = [
+    "type:issue", "state:open|closed", "reason:completed", "author:USER", "assignee:USER",
+    "mentions:USER", "commenter:USER", "involves:USER", "label:LABEL", "milestone:NAME",
+    "repo:OWNER/REPO", "org:ORG", "user:OWNER", "in:title|body|comments", "language:LANGUAGE",
+    "comments:N", "interactions:N", "reactions:N", "created:DATE", "updated:DATE", "closed:DATE",
+    "archived:true|false", "is:locked|unlocked", "no:label|milestone|assignee|project",
+  ];
+
+  for (const qualifier of qualifierFamilies) assert.ok(prompt.includes(qualifier), `missing ${qualifier}`);
+  assert.match(prompt, /TypeScript becomes language:TypeScript/);
+  assert.match(prompt, /Final: type:issue label:"good first issue" language:TypeScript no:assignee/);
+});
+
 test("two-step prompts demonstrate both the draft and expected final format", () => {
   for (const platform of ["GitHub", "GitLab"] as const) {
     const prompt = createTwoStepPrompt(platform);
