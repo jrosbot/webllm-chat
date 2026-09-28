@@ -8,9 +8,9 @@ const MODELS = [
   {
     id: "HuggingFaceTB/SmolLM2-135M-Instruct",
     device: "wasm",
-    dtype: "q2",
-    label: "SmolLM2 135M Q2 · CPU",
-    note: "Smallest 2-bit model · works without WebGPU",
+    dtype: "q4",
+    label: "SmolLM2 135M Q4 · CPU",
+    note: "Smallest model · works without WebGPU",
   },
   {
     id: "HuggingFaceTB/SmolLM2-360M-Instruct",
