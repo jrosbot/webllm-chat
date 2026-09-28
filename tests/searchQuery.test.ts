@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { cleanGeneratedQuery, createSearchQuery, createSearchUrl } from "../src/searchQuery.ts";
-import { createTwoStepPrompt, MAX_REQUEST_LENGTH } from "../src/searchPrompt.ts";
+import { createSearchPrompt, MAX_GENERATED_TOKENS, MAX_REQUEST_LENGTH } from "../src/searchPrompt.ts";
 
 test("replaces a repeated request with a deterministic GitHub query", () => {
   const request = "Open security bugs created this month with more than 5 comments";
@@ -55,14 +55,14 @@ test("uses ISO 8601 for a GitLab month boundary", () => {
 });
 
 test("prompts distinguish GitHub qualifiers from GitLab parameters", () => {
-  assert.match(createTwoStepPrompt("GitHub"), /comments:/);
-  assert.match(createTwoStepPrompt("GitLab"), /URL query parameters/);
-  assert.doesNotMatch(createTwoStepPrompt("GitLab"), /type:issue/);
-  assert.match(createTwoStepPrompt("GitHub"), /two steps in this single response/i);
+  assert.match(createSearchPrompt("GitHub"), /comments:/);
+  assert.match(createSearchPrompt("GitLab"), /URL query parameters/);
+  assert.doesNotMatch(createSearchPrompt("GitLab"), /type:issue/);
+  assert.match(createSearchPrompt("GitHub"), /Return only the query/i);
 });
 
 test("GitHub prompt teaches the complete qualifier vocabulary and language mapping", () => {
-  const prompt = createTwoStepPrompt("GitHub");
+  const prompt = createSearchPrompt("GitHub");
   const qualifierFamilies = [
     "type:issue", "state:open|closed", "reason:completed", "author:USER", "assignee:USER",
     "mentions:USER", "commenter:USER", "involves:USER", "label:LABEL", "milestone:NAME",
@@ -73,20 +73,21 @@ test("GitHub prompt teaches the complete qualifier vocabulary and language mappi
 
   for (const qualifier of qualifierFamilies) assert.ok(prompt.includes(qualifier), `missing ${qualifier}`);
   assert.match(prompt, /TypeScript becomes language:TypeScript/);
-  assert.match(prompt, /Final: type:issue label:"good first issue" language:TypeScript no:assignee/);
+  assert.match(prompt, /Query: type:issue label:"good first issue" language:TypeScript no:assignee/);
 });
 
-test("two-step prompts demonstrate both the draft and expected final format", () => {
+test("prompts demonstrate the expected concise output format", () => {
   for (const platform of ["GitHub", "GitLab"] as const) {
-    const prompt = createTwoStepPrompt(platform);
+    const prompt = createSearchPrompt(platform);
     assert.ok((prompt.match(/^Request:/gm) ?? []).length >= 3);
-    assert.equal((prompt.match(/^Draft:/gm) ?? []).length, (prompt.match(/^Request:/gm) ?? []).length + 1);
-    assert.equal((prompt.match(/^Final:/gm) ?? []).length, (prompt.match(/^Request:/gm) ?? []).length + 1);
+    assert.equal((prompt.match(/^Query:/gm) ?? []).length, (prompt.match(/^Request:/gm) ?? []).length);
+    assert.doesNotMatch(prompt, /^Draft:|^Final:/gm);
   }
 });
 
-test("request limit leaves room for prompts and the two-step answer", () => {
+test("request and generation limits keep local inference small", () => {
   assert.equal(MAX_REQUEST_LENGTH, 1_000);
-  assert.ok(createTwoStepPrompt("GitHub").length < 3_000);
-  assert.ok(createTwoStepPrompt("GitLab").length < 3_000);
+  assert.equal(MAX_GENERATED_TOKENS, 48);
+  assert.ok(createSearchPrompt("GitHub").length < 2_000);
+  assert.ok(createSearchPrompt("GitLab").length < 2_000);
 });

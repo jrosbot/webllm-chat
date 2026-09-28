@@ -1,5 +1,5 @@
 import * as webllm from "@mlc-ai/web-llm";
-import { createTwoStepPrompt, MAX_REQUEST_LENGTH, type SearchPlatform } from "./searchPrompt";
+import { createSearchPrompt, MAX_GENERATED_TOKENS, MAX_REQUEST_LENGTH, type SearchPlatform } from "./searchPrompt";
 import { renderOperatorReference } from "./operatorReference";
 import { createSearchQuery, createSearchUrl } from "./searchQuery";
 import "./style.css";
@@ -221,9 +221,9 @@ generate.addEventListener("click", async () => {
     generate.querySelector("span")!.textContent = "Generating…";
     const response = await llm.chat.completions.create({
       temperature: 0.1,
-      max_tokens: 128,
+      max_tokens: MAX_GENERATED_TOKENS,
       messages: [
-        { role: "system", content: createTwoStepPrompt(platform) },
+        { role: "system", content: createSearchPrompt(platform) },
         { role: "user", content: request },
       ],
     });

@@ -1,7 +1,7 @@
 import { pipeline, type TextGenerationPipeline } from "@huggingface/transformers";
 import { CacheManager, LoggerWithoutDebug, Wllama } from "@wllama/wllama";
 import wllamaWasmUrl from "@wllama/wllama/esm/wasm/wllama.wasm?url";
-import { createTwoStepPrompt, MAX_REQUEST_LENGTH, type SearchPlatform } from "./searchPrompt";
+import { createSearchPrompt, MAX_GENERATED_TOKENS, MAX_REQUEST_LENGTH, type SearchPlatform } from "./searchPrompt";
 import { renderOperatorReference } from "./operatorReference";
 import { createSearchQuery, createSearchUrl } from "./searchQuery";
 import "./style.css";
@@ -219,7 +219,7 @@ async function loadEngine() {
       loading = ggufEngine.loadModelFromHF(
         { repo: model.id, file: model.file },
         {
-          n_ctx: 2048,
+          n_ctx: 1024,
           progressCallback: ({ loaded, total }) => updateProgress(total ? (loaded / total) * 100 : 0),
         },
       ).then(() => ggufEngine!);
@@ -272,19 +272,19 @@ generate.addEventListener("click", async () => {
     if (loadedBackend === "gguf") {
       const response = await (llm as Wllama).createChatCompletion({
         messages: [
-          { role: "system", content: createTwoStepPrompt(platform) },
+          { role: "system", content: createSearchPrompt(platform) },
           { role: "user", content: request },
         ],
-        max_tokens: 128,
+        max_tokens: MAX_GENERATED_TOKENS,
         temperature: 0,
       });
       generatedText = response.choices[0]?.message.content ?? "";
     } else {
       const response = await (llm as TextGenerationPipeline)([
-        { role: "system", content: createTwoStepPrompt(platform) },
+        { role: "system", content: createSearchPrompt(platform) },
         { role: "user", content: request },
       ], {
-        max_new_tokens: 128,
+        max_new_tokens: MAX_GENERATED_TOKENS,
         do_sample: false,
         return_full_text: false,
       });
