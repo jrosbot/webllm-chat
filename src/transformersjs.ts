@@ -164,9 +164,28 @@ function selectedModel() {
   return MODELS.find(({ id }) => id === modelSelect.value) ?? MODELS[0];
 }
 
-modelSelect.addEventListener("change", () => {
-  modelNote.textContent = selectedModel().note;
-  status.textContent = `${selectedModel().label} · loads on first use`;
+modelSelect.addEventListener("change", async () => {
+  modelSelect.disabled = true;
+  generate.disabled = true;
+  status.textContent = "Switching models…";
+  statusDot.classList.remove("ready");
+  try {
+    if (engine) {
+      if (loadedBackend === "gguf") await (engine as Wllama).exit();
+      else await (engine as TextGenerationPipeline).dispose();
+    }
+  } catch {
+    error.textContent = "The previous model could not be fully unloaded, but you can still try another model.";
+  } finally {
+    engine = null;
+    loading = null;
+    loadedBackend = null;
+    ggufEngine = null;
+    modelNote.textContent = selectedModel().note;
+    status.textContent = `${selectedModel().label} · loads on first use`;
+    modelSelect.disabled = false;
+    generate.disabled = false;
+  }
 });
 
 function armStallWarning() {
@@ -281,6 +300,7 @@ generate.addEventListener("click", async () => {
     return;
   }
   generate.disabled = true;
+  modelSelect.disabled = true;
   generate.querySelector("span")!.textContent = "Loading model…";
   let generationStarted: number | null = null;
   const modelLabel = selectedModel().label;
@@ -333,6 +353,7 @@ generate.addEventListener("click", async () => {
     modelSelect.disabled = false;
   } finally {
     generate.disabled = false;
+    modelSelect.disabled = false;
     generate.querySelector("span")!.textContent = "Generate query";
   }
 });
