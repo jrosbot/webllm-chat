@@ -8,12 +8,19 @@ import "./style.css";
 
 const MODELS = [
   {
+    id: "unsloth/SmolLM2-135M-Instruct-GGUF",
+    file: "SmolLM2-135M-Instruct-Q2_K.gguf",
+    backend: "gguf",
+    label: "SmolLM2 135M Q2_K · CPU",
+    note: "Smallest model · 88.2 MB · works without WebGPU",
+  },
+  {
     id: "HuggingFaceTB/SmolLM2-135M-Instruct",
     backend: "transformers",
     device: "wasm",
     dtype: "q4",
     label: "SmolLM2 135M Q4 · CPU",
-    note: "Smallest model · works without WebGPU",
+    note: "Higher-precision 135M model · works without WebGPU",
   },
   {
     id: "unsloth/Qwen3.5-0.8B-GGUF",
