@@ -29,4 +29,4 @@ The Vite build uses relative asset paths, so it works for both user sites and pr
 
 Each deployment defaults to the Transformers.js version at `index.html` (with `transformersjs.html` kept as a direct alias), while `webllm.html` contains the WebLLM alternative. Vite builds all entry points together, so users can switch implementations without a separate deployment.
 
-For each search, the selected model drafts and reviews the query as two labeled steps within one generation. Platform-specific few-shot examples demonstrate both `Draft:` and corrected `Final:` output, and the app extracts the reviewed line. Requests are limited to 1,000 characters so the instructions, examples, request, and 128-token answer fit comfortably in the supported models' context while avoiding the latency of a second model call.
+For each search, the selected model returns one query from a compact, platform-specific prompt. Generation is capped at 48 tokens and the CPU GGUF context at 1,024 tokens, avoiding time spent on explanations that the app would discard. Requests remain limited to 1,000 characters, and deterministic parsing still provides a fallback when a small model rambles.
