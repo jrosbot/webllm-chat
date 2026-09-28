@@ -1,6 +1,7 @@
 import * as webllm from "@mlc-ai/web-llm";
 import { createSearchPrompt, MAX_GENERATED_TOKENS, MAX_REQUEST_LENGTH, type SearchPlatform } from "./searchPrompt";
 import { renderOperatorReference } from "./operatorReference";
+import { PerformanceLog, performancePanel } from "./performanceLog";
 import { createSearchQuery, createSearchUrl } from "./searchQuery";
 import "./style.css";
 
@@ -96,6 +97,8 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <p id="error" class="error" role="alert"></p>
     </section>
 
+    ${performancePanel}
+
     <section class="trust-grid">
       <article><span>◈</span><div><h3>100% private</h3><p>Your text never leaves this device.</p></div></article>
       <article><span>⌁</span><div><h3>Powered by WebGPU</h3><p>The language model runs in your browser.</p></div></article>
@@ -125,6 +128,7 @@ const resetDownload = document.querySelector<HTMLButtonElement>("#reset-download
 const modelSelect = document.querySelector<HTMLSelectElement>("#model")!;
 const modelNote = document.querySelector<HTMLSpanElement>("#model-note")!;
 const operatorReference = document.querySelector<HTMLDivElement>("#operator-reference-content")!;
+const performanceLog = new PerformanceLog(document.querySelector<HTMLElement>(".performance-panel")!);
 let stallTimer: number | undefined;
 
 function selectedModel() {
@@ -165,6 +169,16 @@ document.querySelectorAll<HTMLButtonElement>("[data-example]").forEach((button) 
 
 async function loadEngine() {
   if (engine) return engine;
+  const modelLabel = selectedModel().label;
+  const downloadStarted = performance.now();
+  let loadStarted = downloadStarted;
+  let downloadRecorded = false;
+  const finishDownloadTiming = () => {
+    if (downloadRecorded) return;
+    performanceLog.add(modelLabel, "Model download", downloadStarted);
+    downloadRecorded = true;
+    loadStarted = performance.now();
+  };
   if (!("gpu" in navigator)) throw new Error("WebGPU is not available. Open this page in a recent Chrome or Edge browser with hardware acceleration enabled.");
   if (!loading) {
     const model = selectedModel();
@@ -181,11 +195,14 @@ async function loadEngine() {
         status.textContent = `Downloading model — ${percent}%`;
         downloadDetail.textContent = text || "Downloading model files…";
         progress.style.width = `${percent}%`;
+        if (percent >= 100) finishDownloadTiming();
         armStallWarning();
       },
     });
   }
   engine = await loading;
+  finishDownloadTiming();
+  performanceLog.add(modelLabel, "Model load", loadStarted);
   window.clearTimeout(stallTimer);
   status.textContent = "Model ready";
   statusDot.classList.remove("loading");
@@ -216,9 +233,12 @@ generate.addEventListener("click", async () => {
   }
   generate.disabled = true;
   generate.querySelector("span")!.textContent = "Loading model…";
+  let generationStarted: number | null = null;
+  const modelLabel = selectedModel().label;
   try {
     const llm = await loadEngine();
     generate.querySelector("span")!.textContent = "Generating…";
+    generationStarted = performance.now();
     const response = await llm.chat.completions.create({
       temperature: 0.1,
       max_tokens: MAX_GENERATED_TOKENS,
@@ -232,7 +252,9 @@ generate.addEventListener("click", async () => {
     query.textContent = output;
     openSearch.href = createSearchUrl(platform, output);
     result.hidden = false;
+    performanceLog.add(modelLabel, "Output generation", generationStarted);
   } catch (reason) {
+    if (generationStarted !== null) performanceLog.add(modelLabel, "Output generation", generationStarted, "Failed");
     window.clearTimeout(stallTimer);
     error.textContent = reason instanceof Error ? reason.message : "The model could not be loaded. Please try again.";
     downloadDetail.textContent = "The download did not finish. Clear its partial cache before trying again.";

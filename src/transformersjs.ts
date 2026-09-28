@@ -3,6 +3,7 @@ import { CacheManager, LoggerWithoutDebug, Wllama } from "@wllama/wllama";
 import wllamaWasmUrl from "@wllama/wllama/esm/wasm/wllama.wasm?url";
 import { createSearchPrompt, MAX_GENERATED_TOKENS, MAX_REQUEST_LENGTH, type SearchPlatform } from "./searchPrompt";
 import { renderOperatorReference } from "./operatorReference";
+import { PerformanceLog, performancePanel } from "./performanceLog";
 import { createSearchQuery, createSearchUrl } from "./searchQuery";
 import "./style.css";
 
@@ -121,6 +122,8 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <p id="error" class="error" role="alert"></p>
     </section>
 
+    ${performancePanel}
+
     <section class="trust-grid">
       <article><span>◈</span><div><h3>100% private</h3><p>Your text never leaves this device.</p></div></article>
       <article><span>⌁</span><div><h3>Powered by Transformers.js</h3><p>The language model runs in your browser.</p></div></article>
@@ -154,6 +157,7 @@ const resetDownload = document.querySelector<HTMLButtonElement>("#reset-download
 const modelSelect = document.querySelector<HTMLSelectElement>("#model")!;
 const modelNote = document.querySelector<HTMLSpanElement>("#model-note")!;
 const operatorReference = document.querySelector<HTMLDivElement>("#operator-reference-content")!;
+const performanceLog = new PerformanceLog(document.querySelector<HTMLElement>(".performance-panel")!);
 let stallTimer: number | undefined;
 
 function selectedModel() {
@@ -194,6 +198,16 @@ document.querySelectorAll<HTMLButtonElement>("[data-example]").forEach((button) 
 
 async function loadEngine() {
   if (engine) return engine;
+  const modelLabel = selectedModel().label;
+  const downloadStarted = performance.now();
+  let loadStarted = downloadStarted;
+  let downloadRecorded = false;
+  const finishDownloadTiming = () => {
+    if (downloadRecorded) return;
+    performanceLog.add(modelLabel, "Model download", downloadStarted);
+    downloadRecorded = true;
+    loadStarted = performance.now();
+  };
   if (!loading) {
     const model = selectedModel();
     if (model.backend === "transformers" && model.device === "webgpu" && !("gpu" in navigator)) {
@@ -211,6 +225,7 @@ async function loadEngine() {
       status.textContent = `Downloading model — ${percent}%`;
       downloadDetail.textContent = "Downloading model files…";
       progress.style.width = `${percent}%`;
+      if (percent >= 100) finishDownloadTiming();
       armStallWarning();
     };
     loadedBackend = model.backend;
@@ -234,6 +249,8 @@ async function loadEngine() {
     }
   }
   engine = await loading;
+  finishDownloadTiming();
+  performanceLog.add(modelLabel, "Model load", loadStarted);
   window.clearTimeout(stallTimer);
   status.textContent = "Model ready";
   statusDot.classList.remove("loading");
@@ -265,9 +282,12 @@ generate.addEventListener("click", async () => {
   }
   generate.disabled = true;
   generate.querySelector("span")!.textContent = "Loading model…";
+  let generationStarted: number | null = null;
+  const modelLabel = selectedModel().label;
   try {
     const llm = await loadEngine();
     generate.querySelector("span")!.textContent = "Generating…";
+    generationStarted = performance.now();
     let generatedText = "";
     if (loadedBackend === "gguf") {
       const response = await (llm as Wllama).createChatCompletion({
@@ -297,7 +317,9 @@ generate.addEventListener("click", async () => {
     query.textContent = output;
     openSearch.href = createSearchUrl(platform, output);
     result.hidden = false;
+    performanceLog.add(modelLabel, "Output generation", generationStarted);
   } catch (reason) {
+    if (generationStarted !== null) performanceLog.add(modelLabel, "Output generation", generationStarted, "Failed");
     window.clearTimeout(stallTimer);
     error.textContent = reason instanceof Error ? reason.message : "The model could not be loaded. Please try again.";
     status.textContent = "Model download interrupted";
