@@ -38,8 +38,10 @@ const MODELS: Record<Backend, Model[]> = {
   transformers: [
     { id: "unsloth/SmolLM2-135M-Instruct-GGUF", file: "SmolLM2-135M-Instruct-Q2_K.gguf", runtime: "gguf", label: "SmolLM2 135M Q2_K · CPU", note: "Smallest model · 88.2 MB · works without WebGPU" },
     { id: "HuggingFaceTB/SmolLM2-135M-Instruct", runtime: "transformers", device: "wasm", dtype: "q4", label: "SmolLM2 135M Q4 · CPU", note: "Higher-precision 135M model · works without WebGPU" },
+    { id: "onnx-community/gemma-3-270m-ONNX", runtime: "transformers", device: "wasm", dtype: "q4", label: "Gemma 3 270M Q4 · CPU", note: "Compact 4-bit instruction model · works without WebGPU" },
     { id: "Xenova/gpt2", runtime: "transformers", device: "wasm", dtype: "q8", promptStyle: "completion", label: "GPT-2 124M Q8 · CPU", note: "Tiny completion model · experimental query quality" },
     { id: "unsloth/Qwen3.5-0.8B-GGUF", file: "Qwen3.5-0.8B-UD-IQ2_XXS.gguf", runtime: "gguf", label: "Qwen3.5 0.8B IQ2 XXS · CPU", note: "Smallest 2-bit GGUF · 338 MB · works without WebGPU" },
+    { id: "onnx-community/gemma-3-270m-ONNX", runtime: "transformers", device: "webgpu", dtype: "q4f16", requiresShaderF16: true, label: "Gemma 3 270M Q4/F16 · WebGPU", note: "Compact 4-bit weights and F16 compute · requires shader-f16" },
     { id: "onnx-community/Qwen3-0.6B-ONNX", runtime: "transformers", device: "webgpu", dtype: "q4f16", requiresShaderF16: true, label: "Qwen 3 0.6B Q4/F16 · WebGPU", note: "4-bit weights and F16 compute · requires shader-f16" },
     { id: "onnx-community/Llama-3.2-1B-Instruct-ONNX", runtime: "transformers", device: "webgpu", dtype: "q4f16", requiresShaderF16: true, label: "Llama 3.2 1B Q4/F16 · WebGPU", note: "4-bit weights and F16 compute · requires shader-f16" },
     { id: "HuggingFaceTB/SmolLM2-360M-Instruct", runtime: "transformers", device: "webgpu", dtype: "q4", label: "SmolLM2 360M · balanced", note: "Better results · moderate download · requires WebGPU" },
