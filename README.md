@@ -9,7 +9,13 @@ npm install
 npm run dev
 ```
 
-Open the printed local URL in a recent browser. The Transformers.js page defaults to the CPU-friendly, 2-bit **SmolLM2 135M Q2_K** GGUF (88.2 MB), which runs through wllama without WebGPU. It also offers a higher-precision **SmolLM2 135M Q4** CPU model and the 2-bit **Qwen3.5 0.8B UD-IQ2_XXS** GGUF (338 MB). Its larger **SmolLM2 360M Q4** and **SmolLM2 1.7B Q4** options use WebGPU. The WebLLM page offers **SmolLM2 135M**, **SmolLM2 360M**, and **Llama 3.2 1B**; its 135M build requires WebGPU `shader-f16`. Each selector is locked while a model loads, then becomes available again so you can unload it and try another model. Downloaded models are cached for later visits.
+Open the printed local URL in a recent browser. The single app detects a usable WebGPU adapter and automatically selects WebLLM when one is available; otherwise it selects the CPU-friendly Transformers.js fallback. The inference-engine selector lets users switch in place without navigating to another page. Transformers.js defaults to the 2-bit **SmolLM2 135M Q2_K** GGUF (88.2 MB), while WebLLM defaults to the broadly compatible **SmolLM2 360M Q4**.
+
+The WebLLM menu also includes compact, quantized **Qwen 2.5 0.5B Q4**, **Qwen 2.5 Coder 0.5B Q4**, **Qwen 3 0.6B Q4**, **Qwen 3.5 0.8B Q4**, **TinyLlama 1.1B Q4**, **Llama 3.2 1B Q4**, **Gemma 3 1B Q4**, **SmolLM2 1.7B Q4**, and **Qwen 3 1.7B Q4** choices. Models that require `shader-f16` say so in their picker note.
+
+Transformers.js offers CPU-safe SmolLM2 GGUF and WASM choices, experimental **GPT-2 124M Q8** CPU completion, and quantized ONNX **Qwen 3 0.6B Q4/F16** and **Llama 3.2 1B Q4/F16** WebGPU models. Q8 matches the Transformers.js WASM default, while Q4/F16 reduces model weight bandwidth and uses half-precision GPU compute. Models that need `shader-f16` are disabled when the detected adapter does not expose that feature. GPT-2 is not instruction-tuned, so its query quality may be lower; it is included as a very small compatibility option. Downloaded models are cached for later visits.
+
+The app intentionally does not set `cacheDir`, `localFilesOnly`, or custom ONNX session options: browser caching is already managed by the runtimes, `localFilesOnly` would prevent the first download, and Transformers.js supplies suitable session defaults. Explicit `device` and `dtype` values keep each selectable model on its tested execution path instead of leaving performance-sensitive choices to `auto`.
 
 During the first download each backend displays download progress. If no progress event arrives for 45 seconds, a **Clear download & retry** action appears and removes the incomplete model from that backend's browser cache before reloading the page. Ad blockers, VPNs, corporate proxies, and restrictive networks can block model files served by Hugging Face; try another network if a clean retry still stops at the same point.
 
@@ -27,6 +33,6 @@ The built-in `GITHUB_TOKEN` cannot enable Pages, which is why the workflow expli
 
 The Vite build uses relative asset paths, so it works for both user sites and project sites without changing a repository name in configuration.
 
-Each deployment defaults to the Transformers.js version at `index.html` (with `transformersjs.html` kept as a direct alias), while `webllm.html` contains the WebLLM alternative. Vite builds all entry points together, so users can switch implementations without a separate deployment.
+Each deployment has one entry point at `index.html`. Backend detection, selection, model loading, and generation all happen on that page.
 
 For each search, the selected model returns one query from a compact, platform-specific prompt. Generation is capped at 48 tokens and the CPU GGUF context at 1,024 tokens, avoiding time spent on explanations that the app would discard. Requests remain limited to 1,000 characters, and deterministic parsing still provides a fallback when a small model rambles.
