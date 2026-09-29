@@ -17,6 +17,8 @@ Transformers.js offers CPU-safe SmolLM2 GGUF and WASM choices, **Gemma 3 270M Q4
 
 Additional experimental CPU choices include **SmolLM2 135M AutoRound INT4**, **Mini-BART G2P**, **Squeal AI 20M Instruct**, **GPT-2 XS**, and **GPT Alpha BG 14M ONNX**. Mini-BART runs through Transformers.js's text-to-text pipeline; the remaining additions use text generation. These unusually small or task-specific models may produce lower-quality issue filters, so the deterministic query parser remains available as a fallback.
 
+The model menu also includes the LLaMA-compatible **TinyLlama Stories 15M and 42M Q4** educational checkpoints from Hugging Face. They run on the CPU through the existing Wllama/llama.cpp WebAssembly backend, because their published GGUF files are not WebLLM or Transformers.js artifacts. These base storytelling models use raw completion prompts rather than chat templates and are offered for low-compute experimentation; do not expect instruction-model query quality. A 60M entry is intentionally not advertised because no browser-ready GGUF, ONNX, or MLC artifact is available in the referenced collection.
+
 Gemma's Transformers.js tokenizer does not publish a chat template. The app therefore formats Gemma turn markers as plain text before generation; other instruction models continue to use their tokenizer-provided chat templates.
 
 The app intentionally does not set `cacheDir`, `localFilesOnly`, or custom ONNX session options: browser caching is already managed by the runtimes, `localFilesOnly` would prevent the first download, and Transformers.js supplies suitable session defaults. Explicit `device` and `dtype` values keep each selectable model on its tested execution path instead of leaving performance-sensitive choices to `auto`.

@@ -59,6 +59,8 @@ const MODELS: Record<Backend, Model[]> = {
     { id: "cisco-ai/mini-bart-g2p", runtime: "transformers", device: "wasm", dtype: "q8", pipelineTask: "text2text-generation", promptStyle: "completion", label: "Mini-BART G2P · CPU", note: "Compact encoder-decoder model · experimental query quality" },
     { id: "AlgorithmicResearchGroup/gpt2-xs", runtime: "transformers", device: "wasm", dtype: "q8", promptStyle: "completion", label: "GPT-2 XS · CPU", note: "Extra-small completion model · experimental query quality" },
     { id: "glassbox/gpt-alpha-bg-14m-onnx", runtime: "transformers", device: "wasm", dtype: "q8", promptStyle: "completion", label: "GPT Alpha BG 14M ONNX · CPU", note: "Tiny ONNX completion model · experimental query quality" },
+    { id: "ggml-org/models", file: "tinyllamas/stories15M-q4_0.gguf", runtime: "gguf", promptStyle: "completion", label: "TinyLlama Stories 15M Q4 · CPU", note: "LLaMA-compatible educational model · about 15M parameters · experimental query quality" },
+    { id: "ggml-org/models", file: "tinyllamas/stories42M-q4_0.gguf", runtime: "gguf", promptStyle: "completion", label: "TinyLlama Stories 42M Q4 · CPU", note: "LLaMA-compatible educational model · about 42M parameters · experimental query quality" },
     { id: "onnx-community/gemma-3-270m-ONNX", runtime: "transformers", device: "wasm", dtype: "q4", promptStyle: "gemma", label: "Gemma 3 270M Q4 · CPU", note: "Compact 4-bit instruction model · works without WebGPU" },
     { id: "Xenova/gpt2", runtime: "transformers", device: "wasm", dtype: "q8", promptStyle: "completion", label: "GPT-2 124M Q8 · CPU", note: "Tiny completion model · experimental query quality" },
     { id: "unsloth/Qwen3.5-0.8B-GGUF", file: "Qwen3.5-0.8B-UD-IQ2_XXS.gguf", runtime: "gguf", label: "Qwen3.5 0.8B IQ2 XXS · CPU", note: "Smallest 2-bit GGUF · 338 MB · works without WebGPU" },
@@ -130,10 +132,11 @@ const modelNote = get<HTMLSpanElement>("#model-note");
 const operatorReference = get<HTMLDivElement>("#operator-reference-content");
 const performanceLog = new PerformanceLog(get<HTMLElement>(".performance-panel"));
 
-function selectedModel() { return MODELS[backend].find(({ id }) => id === modelSelect.value) ?? MODELS[backend][0]; }
+function modelValue(model: Model) { return model.file ? `${model.id}#${model.file}` : model.id; }
+function selectedModel() { return MODELS[backend].find((model) => modelValue(model) === modelSelect.value) ?? MODELS[backend][0]; }
 function renderModels() {
-  modelSelect.innerHTML = MODELS[backend].map(({ id, label, requiresShaderF16 }) =>
-    `<option value="${id}"${requiresShaderF16 && !hasShaderF16 ? " disabled" : ""}>${label}${requiresShaderF16 && !hasShaderF16 ? " · unsupported" : ""}</option>`,
+  modelSelect.innerHTML = MODELS[backend].map((model) =>
+    `<option value="${modelValue(model)}"${model.requiresShaderF16 && !hasShaderF16 ? " disabled" : ""}>${model.label}${model.requiresShaderF16 && !hasShaderF16 ? " · unsupported" : ""}</option>`,
   ).join("");
   modelNote.textContent = selectedModel().note;
 }
@@ -218,8 +221,14 @@ generate.addEventListener("click", async () => {
       const response = await (llm as webllm.MLCEngineInterface).chat.completions.create({ temperature: 0.1, max_tokens: MAX_GENERATED_TOKENS, messages: [{ role: "system", content: createSearchPrompt(platform) }, { role: "user", content: request }] });
       generatedText = response.choices[0]?.message?.content ?? "";
     } else if (model.runtime === "gguf") {
-      const response = await (llm as Wllama).createChatCompletion({ messages: [{ role: "system", content: createSearchPrompt(platform) }, { role: "user", content: request }], max_tokens: MAX_GENERATED_TOKENS, temperature: 0 });
-      generatedText = response.choices[0]?.message.content ?? "";
+      if (model.promptStyle === "completion") {
+        const prompt = createTransformersInput("completion", createSearchPrompt(platform), request) as string;
+        const response = await (llm as Wllama).createCompletion({ prompt, max_tokens: MAX_GENERATED_TOKENS, temperature: 0 });
+        generatedText = response.choices[0]?.text ?? "";
+      } else {
+        const response = await (llm as Wllama).createChatCompletion({ messages: [{ role: "system", content: createSearchPrompt(platform) }, { role: "user", content: request }], max_tokens: MAX_GENERATED_TOKENS, temperature: 0 });
+        generatedText = response.choices[0]?.message.content ?? "";
+      }
     } else {
       const input = createTransformersInput(model.promptStyle, createSearchPrompt(platform), request);
       if (model.pipelineTask === "text2text-generation") {
