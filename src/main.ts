@@ -1,11 +1,12 @@
 import * as webllm from "@mlc-ai/web-llm";
-import { pipeline, type TextGenerationPipeline } from "@huggingface/transformers";
+import { pipeline, type Text2TextGenerationPipeline, type TextGenerationPipeline } from "@huggingface/transformers";
 import { CacheManager, LoggerWithoutDebug, Wllama } from "@wllama/wllama";
 import wllamaWasmUrl from "@wllama/wllama/esm/wasm/wllama.wasm?url";
 import { createSearchPrompt, MAX_GENERATED_TOKENS, MAX_REQUEST_LENGTH, type SearchPlatform } from "./searchPrompt";
 import { renderOperatorReference } from "./operatorReference";
 import { PerformanceLog, performancePanel } from "./performanceLog";
 import { createSearchQuery, createSearchUrl } from "./searchQuery";
+import { createTransformersInput, type TransformersPromptStyle } from "./transformersPrompt";
 import "./style.css";
 
 type Backend = "webllm" | "transformers";
@@ -17,7 +18,8 @@ type Model = {
   file?: string;
   device?: "wasm" | "webgpu";
   dtype?: "q4" | "q8" | "q4f16";
-  promptStyle?: "chat" | "completion";
+  pipelineTask?: "text-generation" | "text2text-generation";
+  promptStyle?: TransformersPromptStyle;
   requiresShaderF16?: boolean;
 };
 
@@ -38,10 +40,15 @@ const MODELS: Record<Backend, Model[]> = {
   transformers: [
     { id: "unsloth/SmolLM2-135M-Instruct-GGUF", file: "SmolLM2-135M-Instruct-Q2_K.gguf", runtime: "gguf", label: "SmolLM2 135M Q2_K · CPU", note: "Smallest model · 88.2 MB · works without WebGPU" },
     { id: "HuggingFaceTB/SmolLM2-135M-Instruct", runtime: "transformers", device: "wasm", dtype: "q4", label: "SmolLM2 135M Q4 · CPU", note: "Higher-precision 135M model · works without WebGPU" },
-    { id: "onnx-community/gemma-3-270m-ONNX", runtime: "transformers", device: "wasm", dtype: "q4", label: "Gemma 3 270M Q4 · CPU", note: "Compact 4-bit instruction model · works without WebGPU" },
+    { id: "fbaldassarri/HuggingFaceTB_SmolLM2-135M-auto_round-int4-gs128-sym", runtime: "transformers", device: "wasm", dtype: "q4", promptStyle: "completion", label: "SmolLM2 135M AutoRound INT4 · CPU", note: "Group-size 128 symmetric 4-bit model · works without WebGPU" },
+    { id: "cisco-ai/mini-bart-g2p", runtime: "transformers", device: "wasm", dtype: "q8", pipelineTask: "text2text-generation", promptStyle: "completion", label: "Mini-BART G2P · CPU", note: "Compact encoder-decoder model · experimental query quality" },
+    { id: "Squeal-Studio/squeal_ai_20m-instruct", runtime: "transformers", device: "wasm", dtype: "q8", promptStyle: "completion", label: "Squeal AI 20M Instruct · CPU", note: "Tiny instruction model · experimental query quality" },
+    { id: "AlgorithmicResearchGroup/gpt2-xs", runtime: "transformers", device: "wasm", dtype: "q8", promptStyle: "completion", label: "GPT-2 XS · CPU", note: "Extra-small completion model · experimental query quality" },
+    { id: "glassbox/gpt-alpha-bg-14m-onnx", runtime: "transformers", device: "wasm", dtype: "q8", promptStyle: "completion", label: "GPT Alpha BG 14M ONNX · CPU", note: "Tiny ONNX completion model · experimental query quality" },
+    { id: "onnx-community/gemma-3-270m-ONNX", runtime: "transformers", device: "wasm", dtype: "q4", promptStyle: "gemma", label: "Gemma 3 270M Q4 · CPU", note: "Compact 4-bit instruction model · works without WebGPU" },
     { id: "Xenova/gpt2", runtime: "transformers", device: "wasm", dtype: "q8", promptStyle: "completion", label: "GPT-2 124M Q8 · CPU", note: "Tiny completion model · experimental query quality" },
     { id: "unsloth/Qwen3.5-0.8B-GGUF", file: "Qwen3.5-0.8B-UD-IQ2_XXS.gguf", runtime: "gguf", label: "Qwen3.5 0.8B IQ2 XXS · CPU", note: "Smallest 2-bit GGUF · 338 MB · works without WebGPU" },
-    { id: "onnx-community/gemma-3-270m-ONNX", runtime: "transformers", device: "webgpu", dtype: "q4f16", requiresShaderF16: true, label: "Gemma 3 270M Q4/F16 · WebGPU", note: "Compact 4-bit weights and F16 compute · requires shader-f16" },
+    { id: "onnx-community/gemma-3-270m-ONNX", runtime: "transformers", device: "webgpu", dtype: "q4f16", promptStyle: "gemma", requiresShaderF16: true, label: "Gemma 3 270M Q4/F16 · WebGPU", note: "Compact 4-bit weights and F16 compute · requires shader-f16" },
     { id: "onnx-community/Qwen3-0.6B-ONNX", runtime: "transformers", device: "webgpu", dtype: "q4f16", requiresShaderF16: true, label: "Qwen 3 0.6B Q4/F16 · WebGPU", note: "4-bit weights and F16 compute · requires shader-f16" },
     { id: "onnx-community/Llama-3.2-1B-Instruct-ONNX", runtime: "transformers", device: "webgpu", dtype: "q4f16", requiresShaderF16: true, label: "Llama 3.2 1B Q4/F16 · WebGPU", note: "4-bit weights and F16 compute · requires shader-f16" },
     { id: "HuggingFaceTB/SmolLM2-360M-Instruct", runtime: "transformers", device: "webgpu", dtype: "q4", label: "SmolLM2 360M · balanced", note: "Better results · moderate download · requires WebGPU" },
@@ -77,7 +84,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   </main>
   <footer><span>ISSUE QUERY / 2026</span><span id="footer-engine">Local AI · No data collected</span></footer>`;
 
-type LocalEngine = webllm.MLCEngineInterface | TextGenerationPipeline | Wllama;
+type LocalEngine = webllm.MLCEngineInterface | TextGenerationPipeline | Text2TextGenerationPipeline | Wllama;
 let platform: SearchPlatform = "GitHub";
 let backend: Backend = "transformers";
 let engine: LocalEngine | null = null;
@@ -126,7 +133,7 @@ async function unloadEngine() {
   if (!engine) return;
   if (loadedRuntime === "webllm") await (engine as webllm.MLCEngineInterface).unload();
   else if (loadedRuntime === "gguf") await (engine as Wllama).exit();
-  else await (engine as TextGenerationPipeline).dispose();
+  else await (engine as TextGenerationPipeline | Text2TextGenerationPipeline).dispose();
 }
 async function changeSelection(nextBackend = backend, refreshModels = true) {
   backendSelect.disabled = true; modelSelect.disabled = true; generate.disabled = true;
@@ -166,7 +173,10 @@ async function loadEngine() {
       ggufEngine = new Wllama({ default: wllamaWasmUrl }, { logger: LoggerWithoutDebug });
       loading = ggufEngine.loadModelFromHF({ repo: model.id, file: model.file! }, { n_ctx: 1024, progressCallback: ({ loaded, total }) => updateProgress(total ? (loaded / total) * 100 : 0) }).then(() => ggufEngine!);
     } else {
-      loading = pipeline("text-generation", model.id, { device: model.device, dtype: model.dtype, progress_callback: (event: { status: string; progress?: number }) => { if (event.status === "progress" && event.progress !== undefined) updateProgress(event.progress); } });
+      const options = { device: model.device, dtype: model.dtype, progress_callback: (event: { status: string; progress?: number }) => { if (event.status === "progress" && event.progress !== undefined) updateProgress(event.progress); } };
+      loading = model.pipelineTask === "text2text-generation"
+        ? pipeline("text2text-generation", model.id, options)
+        : pipeline("text-generation", model.id, options);
     }
   }
   engine = await loading; finishDownloadTiming(); performanceLog.add(model.label, "Model load", loadStarted); window.clearTimeout(stallTimer);
@@ -197,11 +207,14 @@ generate.addEventListener("click", async () => {
       const response = await (llm as Wllama).createChatCompletion({ messages: [{ role: "system", content: createSearchPrompt(platform) }, { role: "user", content: request }], max_tokens: MAX_GENERATED_TOKENS, temperature: 0 });
       generatedText = response.choices[0]?.message.content ?? "";
     } else {
-      const input = model.promptStyle === "completion"
-        ? `${createSearchPrompt(platform)}\nRequest: ${request}\nQuery:`
-        : [{ role: "system", content: createSearchPrompt(platform) }, { role: "user", content: request }];
-      const response = await (llm as TextGenerationPipeline)(input, { max_new_tokens: MAX_GENERATED_TOKENS, do_sample: false, return_full_text: false });
-      const generated = response[0]?.generated_text; const lastContent = typeof generated === "string" ? generated : generated?.at(-1)?.content; generatedText = typeof lastContent === "string" ? lastContent : "";
+      const input = createTransformersInput(model.promptStyle, createSearchPrompt(platform), request);
+      if (model.pipelineTask === "text2text-generation") {
+        const response = await (llm as Text2TextGenerationPipeline)(input as string, { max_new_tokens: MAX_GENERATED_TOKENS, do_sample: false });
+        generatedText = response[0]?.generated_text ?? "";
+      } else {
+        const response = await (llm as TextGenerationPipeline)(input, { max_new_tokens: MAX_GENERATED_TOKENS, do_sample: false, return_full_text: false });
+        const generated = response[0]?.generated_text; const lastContent = typeof generated === "string" ? generated : generated?.at(-1)?.content; generatedText = typeof lastContent === "string" ? lastContent : "";
+      }
     }
     const output = createSearchQuery(platform, request, generatedText); if (!output) throw new Error("The model returned an empty query. Please try again.");
     query.textContent = output; openSearch.href = createSearchUrl(platform, output); result.hidden = false; performanceLog.add(model.label, "Output generation", generationStarted);
