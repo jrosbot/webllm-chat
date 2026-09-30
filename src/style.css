@@ -2,6 +2,7 @@
 
 :root { color: #191a16; background: #f2f0e9; font-family: Manrope, sans-serif; font-synthesis: none; }
 * { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 24px; }
 body { margin: 0; min-width: 320px; background: #f2f0e9; }
 button, textarea, select { font: inherit; }
 button, a { -webkit-tap-highlight-color: transparent; }
@@ -10,6 +11,10 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .brand-mark { width: 26px; height: 26px; background: #171812; display: flex; align-items: end; justify-content: center; gap: 2px; padding: 6px; }
 .brand-mark span { display: block; width: 3px; background: #d9ff48; }
 .brand-mark span:nth-child(1) { height: 6px; }.brand-mark span:nth-child(2) { height: 13px; }.brand-mark span:nth-child(3) { height: 9px; }
+.app-nav { display: flex; align-items: center; gap: 6px; margin-left: auto; margin-right: 24px; }
+.app-nav > span { color: #898a81; margin-right: 5px; font: 500 9px DM Mono, monospace; letter-spacing: .12em; }
+.app-nav a { border: 1px solid transparent; padding: 8px 11px; color: #474942; font: 600 11px Manrope, sans-serif; text-decoration: none; }
+.app-nav a:hover, .app-nav a:focus-visible { border-color: #bbb8af; background: #faf9f5; outline: none; }
 .header-actions { display: flex; align-items: center; gap: 1rem; }
 .backend-link { color: inherit; font-size: .75rem; font-weight: 700; letter-spacing: .04em; text-decoration: none; }
 .backend-link:hover { text-decoration: underline; }
@@ -94,5 +99,5 @@ textarea::placeholder { color: #999990; }
 .trust-grid article > span { color: #66802d; font-size: 19px; }.trust-grid h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }.trust-grid p { margin: 0; color: #77786f; font-size: 11px; line-height: 1.5; }
 footer { min-height: 65px; border-top: 1px solid #ccc9bf; padding: 0 clamp(24px, 5vw, 72px); display: flex; align-items: center; justify-content: space-between; color: #83847b; font: 400 9px DM Mono, monospace; letter-spacing: .1em; }
 [hidden] { display: none !important; }
-@media (max-width: 760px) { .hero, .section-intro { grid-template-columns: 1fr; padding-top: 55px; }.section-intro { padding-top: 0; }.lede { margin-top: 30px; }.workspace-head, .action-row, .performance-head { align-items: stretch; flex-direction: column; }.platform { width: fit-content; }.runtime-picker, .model-picker { grid-template-columns: 1fr; gap: 7px; }.runtime-picker label, .model-picker label { padding-top: 0; }.runtime-picker > div, .model-picker > div { align-items: stretch; flex-direction: column; gap: 7px; }.runtime-picker select, .model-picker select { min-width: 0; width: 100%; }.generate { width: 100%; }.timing-row { grid-template-columns: 1fr auto; }.timing-model { grid-column: 1 / -1; grid-row: 2; }.timing-outcome { text-align: right; }.trust-grid { grid-template-columns: 1fr; gap: 25px; }.trust-grid article { border: 0; padding: 0; }.treatment-output pre { padding: 42px 0 0; } }
+@media (max-width: 760px) { .site-header { height: auto; min-height: 76px; flex-wrap: wrap; gap: 10px; padding-top: 14px; padding-bottom: 14px; }.app-nav { order: 3; width: 100%; margin: 0; overflow-x: auto; }.app-nav > span { display: none; }.app-nav a { flex: 1 0 auto; text-align: center; border-color: #d4d1c8; }.hero, .section-intro { grid-template-columns: 1fr; padding-top: 55px; }.section-intro { padding-top: 0; }.lede { margin-top: 30px; }.workspace-head, .action-row, .performance-head { align-items: stretch; flex-direction: column; }.platform { width: fit-content; }.runtime-picker, .model-picker { grid-template-columns: 1fr; gap: 7px; }.runtime-picker label, .model-picker label { padding-top: 0; }.runtime-picker > div, .model-picker > div { align-items: stretch; flex-direction: column; gap: 7px; }.runtime-picker select, .model-picker select { min-width: 0; width: 100%; }.generate { width: 100%; }.timing-row { grid-template-columns: 1fr auto; }.timing-model { grid-column: 1 / -1; grid-row: 2; }.timing-outcome { text-align: right; }.trust-grid { grid-template-columns: 1fr; gap: 25px; }.trust-grid article { border: 0; padding: 0; }.treatment-output pre { padding: 42px 0 0; } }
 @media (max-width: 440px) { main { width: calc(100% - 28px); }.local-pill { display: none; }.hero { padding-bottom: 38px; } h1 { font-size: 49px; }.workspace { padding: 20px; box-shadow: 6px 6px 0 #d9ff48; } footer { align-items: start; flex-direction: column; justify-content: center; gap: 6px; } }

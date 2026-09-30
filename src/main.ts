@@ -75,34 +75,40 @@ const MODELS: Record<Backend, Model[]> = {
 
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <header class="site-header">
-    <a class="brand" href="#" aria-label="Issue Query home"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span><span>ISSUE QUERY</span></a>
+    <a class="brand" href="#top" aria-label="WebLLM applications home"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span><span>WEBLLM</span></a>
+    <nav class="app-nav" aria-label="Applications"><span>APPLICATIONS</span><a href="#issue-query">Issue query</a><a href="#text-studio">Text editor studio</a></nav>
     <div class="local-pill"><span class="pulse"></span> RUNS LOCALLY</div>
   </header>
-  <main>
+  <main id="top">
     <section class="hero"><p class="eyebrow">AI-POWERED ISSUE SEARCH</p><h1>Find the signal.<br><em>Skip the noise.</em></h1><p class="lede">Describe what you're looking for in plain language. Get a precise search query for GitHub or GitLab — generated privately, right in your browser.</p></section>
-    <section class="workspace" aria-labelledby="form-title">
+    <section class="workspace" id="issue-query" aria-labelledby="form-title">
       <div class="workspace-head"><div><span class="step">01</span><h2 id="form-title">What issues are you looking for?</h2></div><div class="platform" role="radiogroup" aria-label="Platform"><button class="platform-button active" data-platform="GitHub" role="radio" aria-checked="true">GitHub</button><button class="platform-button" data-platform="GitLab" role="radio" aria-checked="false">GitLab</button></div></div>
       <textarea id="description" rows="4" maxlength="${MAX_REQUEST_LENGTH}" placeholder="e.g. Open accessibility bugs assigned to me, created this month, with more than 5 comments…" aria-label="Issue description"></textarea>
       <div class="examples"><span>TRY AN EXAMPLE</span><button data-example="Good first issues in TypeScript repositories with no assignee">Good first issues</button><button data-example="Open security bugs created this month with more than 5 comments">Recent security bugs</button><button data-example="Documentation issues assigned to me that have not been updated in 30 days">Stale docs assigned to me</button></div>
       <details class="operator-reference"><summary>Real search operators <span>REFERENCE</span></summary><div id="operator-reference-content">${renderOperatorReference("GitHub")}</div></details>
       <div class="runtime-picker">
-        <label for="backend">INFERENCE ENGINE</label>
-        <div><select id="backend" aria-describedby="backend-note" disabled><option value="webllm">WebLLM · GPU</option><option value="transformers">Transformers.js · CPU / GPU</option></select><span id="backend-note">Checking WebGPU availability…</span></div>
+        <label for="issue-backend">INFERENCE PLATFORM</label>
+        <div><select id="issue-backend" class="backend-select" aria-describedby="issue-backend-note" disabled><option value="webllm">WebLLM · GPU</option><option value="transformers">Transformers.js · CPU / GPU</option></select><span id="issue-backend-note" class="backend-note">Checking WebGPU availability…</span></div>
       </div>
-      <div class="model-picker"><label for="model">LOCAL MODEL</label><div><select id="model" aria-describedby="model-note"></select><span id="model-note"></span></div></div>
+      <div class="model-picker"><label for="issue-model">LOCAL MODEL</label><div><select id="issue-model" class="model-select" aria-describedby="issue-model-note"></select><span id="issue-model-note" class="model-note"></span></div></div>
       <div class="action-row"><div class="status-wrap"><span id="status-dot" class="status-dot"></span><span id="status">Selecting the best engine for this device…</span></div><button id="generate" class="generate" disabled><span>Generate query</span><b aria-hidden="true">→</b></button></div>
       <div id="progress-wrap" class="progress-wrap" hidden><div id="progress" class="progress"></div></div>
       <div id="download-help" class="download-help" hidden><span id="download-detail">The first download may take a few minutes. Keep this tab open.</span><button id="reset-download" type="button" hidden>Clear download &amp; retry</button></div>
       <div id="result" class="result" hidden><div class="result-label"><span>02</span> YOUR SEARCH QUERY</div><div class="query-row"><code id="query"></code><button id="copy" aria-label="Copy query">COPY</button></div><a id="open-search" target="_blank" rel="noopener">Open search <span>↗</span></a></div>
       <p id="error" class="error" role="alert"></p>
     </section>
-    <section class="text-studio" aria-labelledby="text-studio-title">
+    <section class="text-studio" id="text-studio" aria-labelledby="text-studio-title">
       <div class="section-intro"><p class="eyebrow">MULTILINGUAL TEXT STUDIO</p><h2 id="text-studio-title">Polish, understand<br><em>and translate.</em></h2><p>Correct and condense German or French text, then get a structured English translation, key points, corrections and sentiment labels.</p></div>
       <div class="workspace text-workspace">
         <div class="workspace-head"><div><span class="step">01</span><h2>Paste the text to process</h2></div><span class="privacy-note">PROCESSED LOCALLY</span></div>
         <textarea id="treatment-input" rows="7" maxlength="${MAX_TEXT_LENGTH}" placeholder="Paste German, French, or another language here…" aria-label="Text to correct, summarize, and translate"></textarea>
         <div class="examples"><span>LOAD AN EXAMPLE</span><button type="button" data-text-example="de">German text</button><button type="button" data-text-example="fr">French text</button></div>
         <div class="treatment-features" aria-label="Requested analyses"><span>✓ Correction</span><span>✓ Summary</span><span>✓ Key points</span><span>✓ English translation</span><span>✓ Multi-sentiment</span></div>
+        <div class="runtime-picker">
+          <label for="studio-backend">INFERENCE PLATFORM</label>
+          <div><select id="studio-backend" class="backend-select" aria-describedby="studio-backend-note" disabled><option value="webllm">WebLLM · GPU</option><option value="transformers">Transformers.js · CPU / GPU</option></select><span id="studio-backend-note" class="backend-note">Checking WebGPU availability…</span></div>
+        </div>
+        <div class="model-picker"><label for="studio-model">LOCAL MODEL</label><div><select id="studio-model" class="model-select" aria-describedby="studio-model-note"></select><span id="studio-model-note" class="model-note"></span></div></div>
         <div class="action-row"><p class="text-hint">Uses the local engine and model selected above.</p><button id="treat-text" class="generate"><span>Process text</span><b aria-hidden="true">→</b></button></div>
         <div id="treatment-result" class="result" hidden><div class="result-label"><span>02</span> TEXT ANALYSIS</div><div class="treatment-output"><pre id="treatment-output"></pre><button id="copy-treatment" aria-label="Copy text analysis">COPY ALL</button></div></div>
         <p id="treatment-error" class="error" role="alert"></p>
@@ -138,10 +144,11 @@ const openSearch = get<HTMLAnchorElement>("#open-search");
 const downloadHelp = get<HTMLDivElement>("#download-help");
 const downloadDetail = get<HTMLSpanElement>("#download-detail");
 const resetDownload = get<HTMLButtonElement>("#reset-download");
-const backendSelect = get<HTMLSelectElement>("#backend");
-const backendNote = get<HTMLSpanElement>("#backend-note");
-const modelSelect = get<HTMLSelectElement>("#model");
-const modelNote = get<HTMLSpanElement>("#model-note");
+const backendSelects = [...document.querySelectorAll<HTMLSelectElement>(".backend-select")];
+const backendNotes = [...document.querySelectorAll<HTMLSpanElement>(".backend-note")];
+const modelSelects = [...document.querySelectorAll<HTMLSelectElement>(".model-select")];
+const modelNotes = [...document.querySelectorAll<HTMLSpanElement>(".model-note")];
+const modelSelect = modelSelects[0];
 const operatorReference = get<HTMLDivElement>("#operator-reference-content");
 const performanceLog = new PerformanceLog(get<HTMLElement>(".performance-panel"));
 const treatmentInput = get<HTMLTextAreaElement>("#treatment-input");
@@ -150,17 +157,24 @@ const treatmentResult = get<HTMLDivElement>("#treatment-result");
 const treatmentOutput = get<HTMLElement>("#treatment-output");
 const treatmentError = get<HTMLParagraphElement>("#treatment-error");
 
+function disableSelectors(disabled: boolean) {
+  backendSelects.forEach((select) => { select.disabled = disabled; });
+  modelSelects.forEach((select) => { select.disabled = disabled; });
+}
+
 function modelValue(model: Model) { return model.file ? `${model.id}#${model.file}` : model.id; }
 function selectedModel() { return MODELS[backend].find((model) => modelValue(model) === modelSelect.value) ?? MODELS[backend][0]; }
 function renderModels() {
-  modelSelect.innerHTML = MODELS[backend].map((model) =>
+  const options = MODELS[backend].map((model) =>
     `<option value="${modelValue(model)}"${model.requiresShaderF16 && !hasShaderF16 ? " disabled" : ""}>${model.label}${model.requiresShaderF16 && !hasShaderF16 ? " · unsupported" : ""}</option>`,
   ).join("");
-  modelNote.textContent = selectedModel().note;
+  modelSelects.forEach((select) => { select.innerHTML = options; });
+  modelNotes.forEach((note) => { note.textContent = selectedModel().note; });
 }
 function updateBackendCopy() {
   const web = backend === "webllm";
-  backendNote.textContent = web ? "WebGPU detected · WebLLM selected automatically" : hasWebGpu ? "Transformers.js selected manually" : "No WebGPU detected · CPU fallback selected automatically";
+  const note = web ? "WebGPU detected · WebLLM selected automatically" : hasWebGpu ? "Transformers.js selected manually" : "No WebGPU detected · CPU fallback selected automatically";
+  backendNotes.forEach((element) => { element.textContent = note; });
   get<HTMLElement>("#engine-heading").textContent = web ? "Powered by WebLLM" : "Powered by Transformers.js";
   get<HTMLElement>("#footer-engine").textContent = `Built with ${web ? "WebLLM" : "Transformers.js"} · No data collected`;
 }
@@ -171,21 +185,25 @@ async function unloadEngine() {
   else await (engine as TextGenerationPipeline | Text2TextGenerationPipeline).dispose();
 }
 async function changeSelection(nextBackend = backend, refreshModels = true) {
-  backendSelect.disabled = true; modelSelect.disabled = true; generate.disabled = true;
+  backendSelects.forEach((select) => { select.disabled = true; }); modelSelects.forEach((select) => { select.disabled = true; }); generate.disabled = true;
   status.textContent = "Switching inference engine…"; statusDot.classList.remove("ready"); error.textContent = "";
   try { await unloadEngine(); } catch { error.textContent = "The previous model could not be fully unloaded, but you can still continue."; }
   engine = null; loading = null; loadedRuntime = null; ggufEngine = null; backend = nextBackend;
-  backendSelect.value = backend; if (refreshModels) renderModels(); updateBackendCopy();
+  backendSelects.forEach((select) => { select.value = backend; }); if (refreshModels) renderModels(); updateBackendCopy();
   status.textContent = `${selectedModel().label} · loads on first use`;
-  backendSelect.disabled = false; modelSelect.disabled = false; generate.disabled = false;
+  backendSelects.forEach((select) => { select.disabled = false; }); modelSelects.forEach((select) => { select.disabled = false; }); generate.disabled = false;
 }
 function armStallWarning() {
   window.clearTimeout(stallTimer);
   stallTimer = window.setTimeout(() => { downloadDetail.textContent = "No progress for a while. Check your connection, or clear the partial download and retry."; resetDownload.hidden = false; }, 45_000);
 }
 
-backendSelect.addEventListener("change", () => void changeSelection(backendSelect.value as Backend));
-modelSelect.addEventListener("change", () => void changeSelection(backend, false));
+backendSelects.forEach((select) => select.addEventListener("change", () => void changeSelection(select.value as Backend)));
+modelSelects.forEach((select) => select.addEventListener("change", () => {
+  modelSelects.forEach((other) => { other.value = select.value; });
+  modelNotes.forEach((note) => { note.textContent = selectedModel().note; });
+  void changeSelection(backend, false);
+}));
 document.querySelectorAll<HTMLButtonElement>(".platform-button").forEach((button) => button.addEventListener("click", () => {
   platform = button.dataset.platform as SearchPlatform; operatorReference.innerHTML = renderOperatorReference(platform);
   document.querySelectorAll<HTMLButtonElement>(".platform-button").forEach((item) => { const active = item === button; item.classList.toggle("active", active); item.setAttribute("aria-checked", String(active)); });
@@ -202,7 +220,7 @@ async function loadEngine() {
   if (model.device === "webgpu" && !hasWebGpu) throw new Error("WebGPU is not available. Choose a CPU model instead.");
   if (model.requiresShaderF16 && !hasShaderF16) throw new Error("This model requires the WebGPU shader-f16 feature. Choose a compatible Q4 model instead.");
   if (!loading) {
-    modelSelect.disabled = true; backendSelect.disabled = true; status.textContent = "Downloading model…"; statusDot.classList.add("loading"); progressWrap.hidden = false; downloadHelp.hidden = false; resetDownload.hidden = true; armStallWarning();
+    disableSelectors(true); status.textContent = "Downloading model…"; statusDot.classList.add("loading"); progressWrap.hidden = false; downloadHelp.hidden = false; resetDownload.hidden = true; armStallWarning();
     const updateProgress = (amount: number, detail = "Downloading model files…") => { const percent = Math.round(amount); status.textContent = `Downloading model — ${percent}%`; downloadDetail.textContent = detail; progress.style.width = `${percent}%`; if (percent >= 100) finishDownloadTiming(); armStallWarning(); };
     loadedRuntime = model.runtime;
     if (model.runtime === "webllm") {
@@ -266,7 +284,7 @@ resetDownload.addEventListener("click", async () => {
 generate.addEventListener("click", async () => {
   const request = description.value.trim(); error.textContent = ""; result.hidden = true;
   if (!request) { error.textContent = "Describe the issues you want to find first."; description.focus(); return; }
-  generate.disabled = true; modelSelect.disabled = true; backendSelect.disabled = true; generate.querySelector("span")!.textContent = "Loading model…";
+  generate.disabled = true; disableSelectors(true); generate.querySelector("span")!.textContent = "Loading model…";
   let generationStarted: number | null = null; const model = selectedModel();
   try {
     await loadEngine(); generate.querySelector("span")!.textContent = "Generating…"; generationStarted = performance.now();
@@ -276,13 +294,13 @@ generate.addEventListener("click", async () => {
   } catch (reason) {
     if (generationStarted !== null) performanceLog.add(model.label, "Output generation", generationStarted, "Failed");
     window.clearTimeout(stallTimer); error.textContent = reason instanceof Error ? reason.message : "The model could not be loaded. Please try again."; status.textContent = "Model download interrupted"; statusDot.classList.remove("loading"); downloadDetail.textContent = "The download did not finish. Clear its partial cache before trying again."; downloadHelp.hidden = false; resetDownload.hidden = false; loading = null; loadedRuntime = null; ggufEngine = null;
-  } finally { generate.disabled = false; modelSelect.disabled = false; backendSelect.disabled = false; generate.querySelector("span")!.textContent = "Generate query"; }
+  } finally { generate.disabled = false; disableSelectors(false); generate.querySelector("span")!.textContent = "Generate query"; }
 });
 
 treatText.addEventListener("click", async () => {
   const request = treatmentInput.value.trim(); treatmentError.textContent = ""; treatmentResult.hidden = true;
   if (!request) { treatmentError.textContent = "Paste some text or load an example first."; treatmentInput.focus(); return; }
-  treatText.disabled = true; generate.disabled = true; modelSelect.disabled = true; backendSelect.disabled = true;
+  treatText.disabled = true; generate.disabled = true; disableSelectors(true);
   treatText.querySelector("span")!.textContent = "Processing…";
   const model = selectedModel(); let generationStarted: number | null = null;
   try {
@@ -296,7 +314,7 @@ treatText.addEventListener("click", async () => {
     if (generationStarted !== null) performanceLog.add(model.label, "Text treatment", generationStarted, "Failed");
     treatmentError.textContent = reason instanceof Error ? reason.message : "The text could not be processed. Please try again.";
   } finally {
-    treatText.disabled = false; generate.disabled = false; modelSelect.disabled = false; backendSelect.disabled = false;
+    treatText.disabled = false; generate.disabled = false; disableSelectors(false);
     treatText.querySelector("span")!.textContent = "Process text";
   }
 });
