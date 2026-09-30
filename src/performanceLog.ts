@@ -50,7 +50,9 @@ export class PerformanceLog {
   }
 
   add(model: string, phase: TimingPhase, startedAt: number, outcome: TimingEntry["outcome"] = "Completed") {
-    this.entries.push({ id: this.nextId++, recordedAt: new Date().toISOString(), model, phase, durationMs: performance.now() - startedAt, outcome });
+    const entry = { id: this.nextId++, recordedAt: new Date().toISOString(), model, phase, durationMs: performance.now() - startedAt, outcome };
+    this.entries.push(entry);
+    window.dispatchEvent(new CustomEvent<TimingEntry>("issue-query:timing", { detail: entry }));
     this.render();
   }
 
