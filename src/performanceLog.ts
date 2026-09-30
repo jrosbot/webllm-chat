@@ -1,4 +1,4 @@
-export type TimingPhase = "Model download" | "Model load" | "Output generation";
+export type TimingPhase = "Model download" | "Model load" | "Output generation" | "Text treatment";
 
 export interface TimingEntry {
   id: number;
@@ -25,7 +25,7 @@ export const performancePanel = `
         <button id="download-log" type="button" disabled>Download .txt</button>
       </div>
     </div>
-    <div id="timing-log" class="timing-log" aria-live="polite"><p class="empty-log">Timing data will appear after you generate a query.</p></div>
+    <div id="timing-log" class="timing-log" aria-live="polite"><p class="empty-log">Timing data will appear after you generate a query or process text.</p></div>
     <div class="log-feedback">
       <span>Was this performance acceptable?</span>
       <button type="button" data-feedback="up" aria-label="Thumbs up" aria-pressed="false">👍</button>
