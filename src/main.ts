@@ -7,6 +7,7 @@ import { renderOperatorReference } from "./operatorReference";
 import { PerformanceLog, performancePanel } from "./performanceLog";
 import { createSearchQuery, createSearchUrl } from "./searchQuery";
 import { createTransformersInput, type TransformersPromptStyle } from "./transformersPrompt";
+import { createTextTreatmentPrompt, MAX_TEXT_LENGTH, MAX_TREATMENT_TOKENS, TEXT_EXAMPLES } from "./textTreatment";
 import "./style.css";
 
 type Backend = "webllm" | "transformers";
@@ -95,6 +96,18 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <div id="result" class="result" hidden><div class="result-label"><span>02</span> YOUR SEARCH QUERY</div><div class="query-row"><code id="query"></code><button id="copy" aria-label="Copy query">COPY</button></div><a id="open-search" target="_blank" rel="noopener">Open search <span>↗</span></a></div>
       <p id="error" class="error" role="alert"></p>
     </section>
+    <section class="text-studio" aria-labelledby="text-studio-title">
+      <div class="section-intro"><p class="eyebrow">MULTILINGUAL TEXT STUDIO</p><h2 id="text-studio-title">Polish, understand<br><em>and translate.</em></h2><p>Correct and condense German or French text, then get a structured English translation, key points, corrections and sentiment labels.</p></div>
+      <div class="workspace text-workspace">
+        <div class="workspace-head"><div><span class="step">01</span><h2>Paste the text to process</h2></div><span class="privacy-note">PROCESSED LOCALLY</span></div>
+        <textarea id="treatment-input" rows="7" maxlength="${MAX_TEXT_LENGTH}" placeholder="Paste German, French, or another language here…" aria-label="Text to correct, summarize, and translate"></textarea>
+        <div class="examples"><span>LOAD AN EXAMPLE</span><button type="button" data-text-example="de">German text</button><button type="button" data-text-example="fr">French text</button></div>
+        <div class="treatment-features" aria-label="Requested analyses"><span>✓ Correction</span><span>✓ Summary</span><span>✓ Key points</span><span>✓ English translation</span><span>✓ Multi-sentiment</span></div>
+        <div class="action-row"><p class="text-hint">Uses the local engine and model selected above.</p><button id="treat-text" class="generate"><span>Process text</span><b aria-hidden="true">→</b></button></div>
+        <div id="treatment-result" class="result" hidden><div class="result-label"><span>02</span> TEXT ANALYSIS</div><div class="treatment-output"><pre id="treatment-output"></pre><button id="copy-treatment" aria-label="Copy text analysis">COPY ALL</button></div></div>
+        <p id="treatment-error" class="error" role="alert"></p>
+      </div>
+    </section>
     ${performancePanel}
     <section class="trust-grid"><article><span>◈</span><div><h3>100% private</h3><p>Your text never leaves this device.</p></div></article><article><span>⌁</span><div><h3 id="engine-heading">Local inference</h3><p id="engine-description">The language model runs in your browser.</p></div></article><article><span>◎</span><div><h3>Works offline</h3><p>Once downloaded, the model is cached.</p></div></article></section>
   </main>
@@ -131,6 +144,11 @@ const modelSelect = get<HTMLSelectElement>("#model");
 const modelNote = get<HTMLSpanElement>("#model-note");
 const operatorReference = get<HTMLDivElement>("#operator-reference-content");
 const performanceLog = new PerformanceLog(get<HTMLElement>(".performance-panel"));
+const treatmentInput = get<HTMLTextAreaElement>("#treatment-input");
+const treatText = get<HTMLButtonElement>("#treat-text");
+const treatmentResult = get<HTMLDivElement>("#treatment-result");
+const treatmentOutput = get<HTMLElement>("#treatment-output");
+const treatmentError = get<HTMLParagraphElement>("#treatment-error");
 
 function modelValue(model: Model) { return model.file ? `${model.id}#${model.file}` : model.id; }
 function selectedModel() { return MODELS[backend].find((model) => modelValue(model) === modelSelect.value) ?? MODELS[backend][0]; }
@@ -173,6 +191,9 @@ document.querySelectorAll<HTMLButtonElement>(".platform-button").forEach((button
   document.querySelectorAll<HTMLButtonElement>(".platform-button").forEach((item) => { const active = item === button; item.classList.toggle("active", active); item.setAttribute("aria-checked", String(active)); });
 }));
 document.querySelectorAll<HTMLButtonElement>("[data-example]").forEach((button) => button.addEventListener("click", () => { description.value = button.dataset.example!; description.focus(); }));
+document.querySelectorAll<HTMLButtonElement>("[data-text-example]").forEach((button) => button.addEventListener("click", () => {
+  treatmentInput.value = TEXT_EXAMPLES[button.dataset.textExample as keyof typeof TEXT_EXAMPLES]; treatmentInput.focus();
+}));
 
 async function loadEngine() {
   if (engine) return engine;
@@ -200,6 +221,38 @@ async function loadEngine() {
   status.textContent = "Model ready"; statusDot.classList.remove("loading"); statusDot.classList.add("ready"); progressWrap.hidden = true; downloadHelp.hidden = true; return engine;
 }
 
+async function generateLocalText(systemPrompt: string, request: string, maxTokens: number): Promise<string> {
+  const llm = await loadEngine();
+  const model = selectedModel();
+  if (model.runtime === "webllm") {
+    const response = await (llm as webllm.MLCEngineInterface).chat.completions.create({
+      temperature: 0.1, max_tokens: maxTokens,
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: request }],
+    });
+    return response.choices[0]?.message?.content ?? "";
+  }
+  if (model.runtime === "gguf") {
+    if (model.promptStyle === "completion") {
+      const prompt = createTransformersInput("completion", systemPrompt, request) as string;
+      const response = await (llm as Wllama).createCompletion({ prompt, max_tokens: maxTokens, temperature: 0 });
+      return response.choices[0]?.text ?? "";
+    }
+    const response = await (llm as Wllama).createChatCompletion({
+      messages: [{ role: "system", content: systemPrompt }, { role: "user", content: request }], max_tokens: maxTokens, temperature: 0,
+    });
+    return response.choices[0]?.message.content ?? "";
+  }
+  const input = createTransformersInput(model.promptStyle, systemPrompt, request);
+  if (model.pipelineTask === "text2text-generation") {
+    const response = await (llm as Text2TextGenerationPipeline)(input as string, { max_new_tokens: maxTokens, do_sample: false });
+    return response[0]?.generated_text ?? "";
+  }
+  const response = await (llm as TextGenerationPipeline)(input, { max_new_tokens: maxTokens, do_sample: false, return_full_text: false });
+  const generated = response[0]?.generated_text;
+  const lastContent = typeof generated === "string" ? generated : generated?.at(-1)?.content;
+  return typeof lastContent === "string" ? lastContent : "";
+}
+
 resetDownload.addEventListener("click", async () => {
   resetDownload.disabled = true; downloadDetail.textContent = "Clearing the incomplete model download…";
   try {
@@ -216,35 +269,41 @@ generate.addEventListener("click", async () => {
   generate.disabled = true; modelSelect.disabled = true; backendSelect.disabled = true; generate.querySelector("span")!.textContent = "Loading model…";
   let generationStarted: number | null = null; const model = selectedModel();
   try {
-    const llm = await loadEngine(); generate.querySelector("span")!.textContent = "Generating…"; generationStarted = performance.now(); let generatedText = "";
-    if (model.runtime === "webllm") {
-      const response = await (llm as webllm.MLCEngineInterface).chat.completions.create({ temperature: 0.1, max_tokens: MAX_GENERATED_TOKENS, messages: [{ role: "system", content: createSearchPrompt(platform) }, { role: "user", content: request }] });
-      generatedText = response.choices[0]?.message?.content ?? "";
-    } else if (model.runtime === "gguf") {
-      if (model.promptStyle === "completion") {
-        const prompt = createTransformersInput("completion", createSearchPrompt(platform), request) as string;
-        const response = await (llm as Wllama).createCompletion({ prompt, max_tokens: MAX_GENERATED_TOKENS, temperature: 0 });
-        generatedText = response.choices[0]?.text ?? "";
-      } else {
-        const response = await (llm as Wllama).createChatCompletion({ messages: [{ role: "system", content: createSearchPrompt(platform) }, { role: "user", content: request }], max_tokens: MAX_GENERATED_TOKENS, temperature: 0 });
-        generatedText = response.choices[0]?.message.content ?? "";
-      }
-    } else {
-      const input = createTransformersInput(model.promptStyle, createSearchPrompt(platform), request);
-      if (model.pipelineTask === "text2text-generation") {
-        const response = await (llm as Text2TextGenerationPipeline)(input as string, { max_new_tokens: MAX_GENERATED_TOKENS, do_sample: false });
-        generatedText = response[0]?.generated_text ?? "";
-      } else {
-        const response = await (llm as TextGenerationPipeline)(input, { max_new_tokens: MAX_GENERATED_TOKENS, do_sample: false, return_full_text: false });
-        const generated = response[0]?.generated_text; const lastContent = typeof generated === "string" ? generated : generated?.at(-1)?.content; generatedText = typeof lastContent === "string" ? lastContent : "";
-      }
-    }
+    await loadEngine(); generate.querySelector("span")!.textContent = "Generating…"; generationStarted = performance.now();
+    const generatedText = await generateLocalText(createSearchPrompt(platform), request, MAX_GENERATED_TOKENS);
     const output = createSearchQuery(platform, request, generatedText); if (!output) throw new Error("The model returned an empty query. Please try again.");
     query.textContent = output; openSearch.href = createSearchUrl(platform, output); result.hidden = false; performanceLog.add(model.label, "Output generation", generationStarted);
   } catch (reason) {
     if (generationStarted !== null) performanceLog.add(model.label, "Output generation", generationStarted, "Failed");
     window.clearTimeout(stallTimer); error.textContent = reason instanceof Error ? reason.message : "The model could not be loaded. Please try again."; status.textContent = "Model download interrupted"; statusDot.classList.remove("loading"); downloadDetail.textContent = "The download did not finish. Clear its partial cache before trying again."; downloadHelp.hidden = false; resetDownload.hidden = false; loading = null; loadedRuntime = null; ggufEngine = null;
   } finally { generate.disabled = false; modelSelect.disabled = false; backendSelect.disabled = false; generate.querySelector("span")!.textContent = "Generate query"; }
+});
+
+treatText.addEventListener("click", async () => {
+  const request = treatmentInput.value.trim(); treatmentError.textContent = ""; treatmentResult.hidden = true;
+  if (!request) { treatmentError.textContent = "Paste some text or load an example first."; treatmentInput.focus(); return; }
+  treatText.disabled = true; generate.disabled = true; modelSelect.disabled = true; backendSelect.disabled = true;
+  treatText.querySelector("span")!.textContent = "Processing…";
+  const model = selectedModel(); let generationStarted: number | null = null;
+  try {
+    generationStarted = performance.now();
+    const output = (await generateLocalText(createTextTreatmentPrompt(), request, MAX_TREATMENT_TOKENS)).trim();
+    if (!output) throw new Error("The model returned an empty analysis. Please try again or choose a larger model.");
+    treatmentOutput.textContent = output; treatmentResult.hidden = false;
+    performanceLog.add(model.label, "Text treatment", generationStarted);
+    treatmentResult.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (reason) {
+    if (generationStarted !== null) performanceLog.add(model.label, "Text treatment", generationStarted, "Failed");
+    treatmentError.textContent = reason instanceof Error ? reason.message : "The text could not be processed. Please try again.";
+  } finally {
+    treatText.disabled = false; generate.disabled = false; modelSelect.disabled = false; backendSelect.disabled = false;
+    treatText.querySelector("span")!.textContent = "Process text";
+  }
+});
+
+get<HTMLButtonElement>("#copy-treatment").addEventListener("click", async (event) => {
+  await navigator.clipboard.writeText(treatmentOutput.textContent ?? "");
+  const button = event.currentTarget as HTMLButtonElement; button.textContent = "COPIED"; setTimeout(() => (button.textContent = "COPY ALL"), 1400);
 });
 
 get<HTMLButtonElement>("#copy").addEventListener("click", async (event) => { await navigator.clipboard.writeText(query.textContent ?? ""); const button = event.currentTarget as HTMLButtonElement; button.textContent = "COPIED"; setTimeout(() => (button.textContent = "COPY"), 1400); });
