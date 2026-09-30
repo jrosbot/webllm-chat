@@ -54,6 +54,30 @@ test("uses ISO 8601 for a GitLab month boundary", () => {
   );
 });
 
+test("preserves language and stale-date requirements in the GitHub fallback", () => {
+  assert.equal(
+    createSearchQuery(
+      "GitHub",
+      "Documentation issues assigned to me in TypeScript repositories that have not been updated in 30 days",
+      "Here is the query you requested.",
+      new Date("2026-03-15T12:00:00Z"),
+    ),
+    'type:issue label:documentation assignee:@me updated:<2026-02-13 language:TypeScript',
+  );
+});
+
+test("uses an ISO timestamp for stale GitLab issues", () => {
+  assert.equal(
+    createSearchQuery(
+      "GitLab",
+      "Open issues stale for 7 days",
+      "not a filter",
+      new Date("2026-01-03T12:00:00Z"),
+    ),
+    "issue_type=issue&state=opened&updated_before=2025-12-27T00%3A00%3A00Z",
+  );
+});
+
 test("prompts distinguish GitHub qualifiers from GitLab parameters", () => {
   assert.match(createSearchPrompt("GitHub"), /comments:/);
   assert.match(createSearchPrompt("GitLab"), /URL query parameters/);

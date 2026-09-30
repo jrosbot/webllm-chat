@@ -13,6 +13,23 @@ function firstDayOfMonthIso(now: Date): string {
   return `${firstDayOfMonth(now)}T00:00:00Z`;
 }
 
+function daysAgo(now: Date, days: number): string {
+  const date = new Date(now);
+  date.setUTCDate(date.getUTCDate() - days);
+  return date.toISOString().slice(0, 10);
+}
+
+const LANGUAGE_ALIASES: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\btypescript\b/i, "TypeScript"],
+  [/\bjavascript\b/i, "JavaScript"],
+  [/\bpython\b/i, "Python"],
+  [/\brust\b/i, "Rust"],
+  [/\b(?:golang|go)\b/i, "Go"],
+  [/\bjava\b/i, "Java"],
+  [/\bc\+\+(?=\s|$)/i, "C++"],
+  [/\bc#(?=\s|$)/i, "C#"],
+];
+
 /** Removes chatty model output while preserving quoted, space-containing labels. */
 export function cleanGeneratedQuery(output: string): string {
   const unwrapped = output
@@ -52,6 +69,17 @@ function fallbackQuery(platform: SearchPlatform, request: string, now: Date): st
   }
   if (/\bcreated this month\b/.test(text)) {
     filters.push(github ? `created:>=${firstDayOfMonth(now)}` : `created_after=${encodeURIComponent(firstDayOfMonthIso(now))}`);
+  }
+
+  const staleDays = text.match(/\b(?:not been updated|no updates?|stale)\s+(?:for|in)?\s*(\d+)\s+days?\b/);
+  if (staleDays) {
+    const cutoff = daysAgo(now, Number(staleDays[1]));
+    filters.push(github ? `updated:<${cutoff}` : `updated_before=${encodeURIComponent(`${cutoff}T00:00:00Z`)}`);
+  }
+
+  if (github) {
+    const language = LANGUAGE_ALIASES.find(([pattern]) => pattern.test(request))?.[1];
+    if (language) filters.push(`language:${language}`);
   }
 
   const comments = text.match(/\b(?:more than|over)\s+(\d+)\s+comments?\b/);
