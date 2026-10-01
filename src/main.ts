@@ -7,7 +7,15 @@ import { renderOperatorReference } from "./operatorReference";
 import { PerformanceLog, performancePanel } from "./performanceLog";
 import { createSearchQuery, createSearchUrl } from "./searchQuery";
 import { createTransformersInput, type TransformersPromptStyle } from "./transformersPrompt";
-import { createTextTreatmentPrompt, MAX_TEXT_LENGTH, MAX_TREATMENT_TOKENS, TEXT_EXAMPLES } from "./textTreatment";
+import {
+  composeTextTreatment,
+  createEnglishTreatmentPrompt,
+  createOriginalTreatmentPrompt,
+  MAX_ENGLISH_TREATMENT_TOKENS,
+  MAX_ORIGINAL_TREATMENT_TOKENS,
+  MAX_TEXT_LENGTH,
+  TEXT_EXAMPLES,
+} from "./textTreatment";
 import "./style.css";
 
 type Backend = "webllm" | "transformers";
@@ -90,7 +98,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <p id="error" class="error" role="alert"></p>
     </section>
     <section class="text-studio" id="text-studio" aria-labelledby="text-studio-title">
-      <div class="section-intro"><p class="eyebrow">MULTILINGUAL TEXT STUDIO</p><h2 id="text-studio-title">Polish, understand<br><em>and translate.</em></h2><p>Correct and condense German or French text, then get a structured English translation, key points, corrections and sentiment labels.</p></div>
+      <div class="section-intro"><p class="eyebrow">MULTILINGUAL TEXT STUDIO</p><h2 id="text-studio-title">Polish, understand<br><em>and translate.</em></h2><p>Two focused local passes correct and condense your text, then produce a structured English translation, key points, corrections and sentiment labels.</p></div>
       <div class="workspace text-workspace">
         <div class="workspace-head"><div><span class="step">01</span><h2>Paste the text to process</h2></div><span class="privacy-note">PROCESSED LOCALLY</span></div>
         <textarea id="treatment-input" rows="7" maxlength="${MAX_TEXT_LENGTH}" placeholder="Paste German, French, or another language here…" aria-label="Text to correct, summarize, and translate"></textarea>
@@ -231,7 +239,7 @@ async function loadEngine() {
   status.textContent = "Model ready"; statusDot.classList.remove("loading"); statusDot.classList.add("ready"); progressWrap.hidden = true; downloadHelp.hidden = true; return engine;
 }
 
-async function generateLocalText(systemPrompt: string, request: string, maxTokens: number): Promise<string> {
+async function generateLocalText(systemPrompt: string, request: string, maxTokens: number, outputLabel = "Query"): Promise<string> {
   const llm = await loadEngine();
   const model = selectedModel();
   if (model.runtime === "webllm") {
@@ -243,7 +251,7 @@ async function generateLocalText(systemPrompt: string, request: string, maxToken
   }
   if (model.runtime === "gguf") {
     if (model.promptStyle === "completion") {
-      const prompt = createTransformersInput("completion", systemPrompt, request) as string;
+      const prompt = createTransformersInput("completion", systemPrompt, request, outputLabel) as string;
       const response = await (llm as Wllama).createCompletion({ prompt, max_tokens: maxTokens, temperature: 0 });
       return response.choices[0]?.text ?? "";
     }
@@ -252,7 +260,7 @@ async function generateLocalText(systemPrompt: string, request: string, maxToken
     });
     return response.choices[0]?.message.content ?? "";
   }
-  const input = createTransformersInput(model.promptStyle, systemPrompt, request);
+  const input = createTransformersInput(model.promptStyle, systemPrompt, request, outputLabel);
   if (model.pipelineTask === "text2text-generation") {
     const response = await (llm as Text2TextGenerationPipeline)(input as string, { max_new_tokens: maxTokens, do_sample: false });
     return response[0]?.generated_text ?? "";
@@ -297,9 +305,17 @@ treatText.addEventListener("click", async () => {
   const model = selectedModel(); let generationStarted: number | null = null;
   try {
     generationStarted = performance.now();
-    const output = (await generateLocalText(createTextTreatmentPrompt(), request, MAX_TREATMENT_TOKENS)).trim();
-    if (!output) throw new Error("The model returned an empty analysis. Please try again or choose a larger model.");
-    treatmentOutput.textContent = output; treatmentResult.hidden = false;
+    const originalAnalysis = (await generateLocalText(createOriginalTreatmentPrompt(), request, MAX_ORIGINAL_TREATMENT_TOKENS, "Response")).trim();
+    if (!originalAnalysis) throw new Error("The model returned an empty editing response. Please try again or choose a larger model.");
+    treatText.querySelector("span")!.textContent = "Translating…";
+    const englishAnalysis = (await generateLocalText(
+      createEnglishTreatmentPrompt(request, originalAnalysis),
+      "Produce the requested English sections from the delimited source and edited analysis.",
+      MAX_ENGLISH_TREATMENT_TOKENS,
+      "Response",
+    )).trim();
+    if (!englishAnalysis) throw new Error("The model returned an empty English response. Please try again or choose a larger model.");
+    treatmentOutput.textContent = composeTextTreatment(originalAnalysis, englishAnalysis); treatmentResult.hidden = false;
     performanceLog.add(model.label, "Text treatment", generationStarted);
     treatmentResult.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (reason) {
