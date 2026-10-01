@@ -17,8 +17,9 @@ export function createTransformersInput(
   style: TransformersPromptStyle | undefined,
   systemPrompt: string,
   request: string,
+  outputLabel = "Query",
 ): string | ChatMessage[] {
-  if (style === "completion") return `${systemPrompt}\nRequest: ${request}\nQuery:`;
+  if (style === "completion") return `${systemPrompt}\nRequest: ${request}\n${outputLabel}:`;
 
   if (style === "gemma") {
     return `<start_of_turn>user\n${systemPrompt}\n\nRequest: ${request}<end_of_turn>\n<start_of_turn>model\n`;

@@ -22,3 +22,10 @@ test("formats completion-only models without chat messages", () => {
     "Return only a query.\nRequest: Open bugs\nQuery:",
   );
 });
+
+test("allows non-query completion tasks to use an appropriate output cue", () => {
+  assert.equal(
+    createTransformersInput("completion", "Edit the text.", "Bonjour", "Response"),
+    "Edit the text.\nRequest: Bonjour\nResponse:",
+  );
+});

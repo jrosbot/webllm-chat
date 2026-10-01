@@ -2,7 +2,7 @@
 
 A private, browser-only assistant that turns natural-language descriptions into GitHub or GitLab issue search queries. The model runs locally with Transformers.js or WebLLM and WebGPU; no prompt is sent to an application server.
 
-The same page also includes a multilingual text studio. It corrects and summarizes text in its original language, then returns an English translation and summary, key points, a correction list, and multiple sentiment labels. German and French sample texts make the workflow quick to try, and this processing uses the same selected local model.
+The same page also includes a multilingual text studio. Two focused model passes first edit in the original language and then produce an English translation and analysis; the application assembles stable top-level sections. German and French sample texts make the workflow quick to try, and this processing uses the same selected local model. The four approaches considered and the rationale for this design are recorded in [`docs/text-studio-options.md`](docs/text-studio-options.md).
 
 ## Local development
 
