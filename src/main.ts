@@ -23,13 +23,14 @@ type Model = {
   id: string;
   label: string;
   note: string;
-  runtime: "webllm" | "gguf" | "transformers";
+  runtime: "webllm" | "gguf" | "transformers" | "unavailable";
   file?: string;
   device?: "wasm" | "webgpu";
   dtype?: "fp32" | "q4" | "q8" | "q4f16";
   pipelineTask?: "text-generation" | "text2text-generation";
   promptStyle?: TransformersPromptStyle;
   requiresShaderF16?: boolean;
+  unavailableReason?: string;
 };
 
 const MODELS: Record<Backend, Model[]> = {
@@ -45,6 +46,7 @@ const MODELS: Record<Backend, Model[]> = {
     { id: "Qwen2.5-1.5B-Instruct-q4f32_1-MLC", runtime: "webllm", label: "Qwen 2.5 1.5B Q4 · quality", note: "Stronger instruction model · larger download" },
     { id: "Qwen2.5-Coder-1.5B-Instruct-q4f32_1-MLC", runtime: "webllm", label: "Qwen 2.5 Coder 1.5B Q4 · code", note: "Stronger code-specialized model · larger download" },
     { id: "gemma3-1b-it-q4f16_1-MLC", runtime: "webllm", requiresShaderF16: true, label: "Gemma 3 1B Q4/F16 · instruction", note: "Compact instruction model · requires shader-f16" },
+    { id: "mlc-ai/DeepSeek-R1-Distill-Qwen-1.5B-q4f16_1-MLC", runtime: "webllm", requiresShaderF16: true, label: "DeepSeek R1 Distill Qwen 1.5B Q4/F16", note: "Reasoning model · requires shader-f16 · large download" },
     { id: "SmolLM2-1.7B-Instruct-q4f32_1-MLC", runtime: "webllm", label: "SmolLM2 1.7B Q4 · quality", note: "Larger quantized model · broad WebGPU compatibility" },
     { id: "Qwen3-1.7B-q4f32_1-MLC", runtime: "webllm", label: "Qwen 3 1.7B Q4 · quality", note: "More capable quantized model · larger download" },
     { id: "gemma-2-2b-it-q4f32_1-MLC-1k", runtime: "webllm", label: "Gemma 2 2B Q4 · 1K", note: "Instruction model · 1,024-token context · larger download" },
@@ -63,11 +65,17 @@ const MODELS: Record<Backend, Model[]> = {
   transformers: [
     { id: "Squeal-Studio/squeal_ai_20m-instruct", runtime: "transformers", device: "wasm", dtype: "q8", promptStyle: "completion", label: "Squeal AI 20M Instruct · CPU · default", note: "Default CPU model · tiny download · experimental query quality" },
     { id: "onnx-community/gemma-3-270m-ONNX", runtime: "transformers", device: "wasm", dtype: "q4", promptStyle: "gemma", label: "Gemma 3 270M Q4 · CPU", note: "Compact 4-bit instruction model · works without WebGPU" },
+    { id: "onnx-community/gemma-3-1b-it-ONNX", runtime: "transformers", device: "wasm", dtype: "q4", label: "Gemma 3 1B Q4 · ONNX CPU", note: "Official community ONNX conversion · approximately 880 MB" },
     { id: "Xenova/gpt2", runtime: "transformers", device: "wasm", dtype: "fp32", promptStyle: "completion", label: "GPT-2 124M FP32 · CPU", note: "Small completion model · experimental query quality" },
     { id: "unsloth/Qwen3.5-0.8B-GGUF", file: "Qwen3.5-0.8B-UD-IQ2_XXS.gguf", runtime: "gguf", label: "Qwen3.5 0.8B IQ2 XXS · CPU", note: "Smallest 2-bit GGUF · 338 MB · works without WebGPU" },
+    { id: "unsloth/gemma-4-E2B-it-qat-mobile-GGUF", file: "gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf", runtime: "gguf", label: "Gemma 4 E2B Q2 XL · GGUF CPU", note: "Experimental Gemma 4 text model · 2.19 GB · MTP drafter not required" },
+    { id: "unsloth/DeepSeek-R1-Distill-Qwen-1.5B-GGUF", file: "DeepSeek-R1-Distill-Qwen-1.5B-Q4_K_M.gguf", runtime: "gguf", label: "DeepSeek R1 Distill Qwen 1.5B Q4_K_M · GGUF CPU", note: "Reasoning model · 1.12 GB · works without WebGPU" },
+    { id: "bartowski/gemma-3-1b-it-GGUF", file: "gemma-3-1b-it-Q4_K_M.gguf", runtime: "unavailable", unavailableReason: "This gated Gemma repository needs a Hugging Face access token, which this browser-only app does not collect.", label: "Gemma 3 1B Q4_K_M · GGUF", note: "Unavailable anonymously · accept the Gemma license and provide an authenticated host" },
+    { id: "google/gemma-3-1b-it-litert", runtime: "unavailable", unavailableReason: "Google's current LiteRT-LM JavaScript API does not support this gated Gemma 3 LiteRT artifact.", label: "Gemma 3 1B · MediaPipe / LiteRT", note: "Unavailable in the current browser API · gated repository" },
     { id: "onnx-community/gemma-3-270m-ONNX", runtime: "transformers", device: "webgpu", dtype: "q4f16", promptStyle: "gemma", requiresShaderF16: true, label: "Gemma 3 270M Q4/F16 · WebGPU", note: "Compact 4-bit weights and F16 compute · requires shader-f16" },
     { id: "onnx-community/Qwen3-0.6B-ONNX", runtime: "transformers", device: "webgpu", dtype: "q4f16", requiresShaderF16: true, label: "Qwen 3 0.6B Q4/F16 · WebGPU", note: "4-bit weights and F16 compute · requires shader-f16" },
     { id: "onnx-community/Llama-3.2-1B-Instruct-ONNX", runtime: "transformers", device: "webgpu", dtype: "q4f16", requiresShaderF16: true, label: "Llama 3.2 1B Q4/F16 · WebGPU", note: "4-bit weights and F16 compute · requires shader-f16" },
+    { id: "onnx-community/DeepSeek-R1-Distill-Qwen-1.5B-ONNX", runtime: "transformers", device: "webgpu", dtype: "q4f16", requiresShaderF16: true, label: "DeepSeek R1 Distill Qwen 1.5B Q4/F16 · ONNX WebGPU", note: "Reasoning model · 1.37 GB · requires shader-f16" },
     { id: "HuggingFaceTB/SmolLM2-360M-Instruct", runtime: "transformers", device: "webgpu", dtype: "q4", label: "SmolLM2 360M · balanced", note: "Better results · moderate download · requires WebGPU" },
     { id: "HuggingFaceTB/SmolLM2-1.7B-Instruct", runtime: "transformers", device: "webgpu", dtype: "q4", label: "SmolLM2 1.7B · quality", note: "Best results · largest download · requires WebGPU" },
   ],
@@ -166,7 +174,7 @@ function modelValue(model: Model) { return model.file ? `${model.id}#${model.fil
 function selectedModel() { return MODELS[backend].find((model) => modelValue(model) === modelSelect.value) ?? MODELS[backend][0]; }
 function renderModels() {
   const options = MODELS[backend].map((model) =>
-    `<option value="${modelValue(model)}" data-runtime="${model.runtime}"${model.requiresShaderF16 && !hasShaderF16 ? " disabled" : ""}>${model.label}${model.requiresShaderF16 && !hasShaderF16 ? " · unsupported" : ""}</option>`,
+    `<option value="${modelValue(model)}" data-runtime="${model.runtime}"${model.unavailableReason || (model.requiresShaderF16 && !hasShaderF16) ? " disabled" : ""}>${model.label}${model.unavailableReason ? " · unavailable" : model.requiresShaderF16 && !hasShaderF16 ? " · unsupported" : ""}</option>`,
   ).join("");
   modelSelects.forEach((select) => { select.innerHTML = options; });
   modelNotes.forEach((note) => { note.textContent = selectedModel().note; });
@@ -218,6 +226,7 @@ async function loadEngine() {
   const model = selectedModel(); const downloadStarted = performance.now(); let loadStarted = downloadStarted; let downloadRecorded = false;
   const finishDownloadTiming = () => { if (downloadRecorded) return; performanceLog.add(model.label, "Model download", downloadStarted); downloadRecorded = true; loadStarted = performance.now(); };
   if (model.device === "webgpu" && !hasWebGpu) throw new Error("WebGPU is not available. Choose a CPU model instead.");
+  if (model.unavailableReason) throw new Error(model.unavailableReason);
   if (model.requiresShaderF16 && !hasShaderF16) throw new Error("This model requires the WebGPU shader-f16 feature. Choose a compatible Q4 model instead.");
   if (!loading) {
     disableSelectors(true); status.textContent = "Downloading model…"; statusDot.classList.add("loading"); progressWrap.hidden = false; downloadHelp.hidden = false; resetDownload.hidden = true; armStallWarning();
