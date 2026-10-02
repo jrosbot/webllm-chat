@@ -67,7 +67,7 @@ const MODELS: Record<Backend, Model[]> = {
   transformers: [
     { id: "Squeal-Studio/squeal_ai_20m-instruct", runtime: "transformers", device: "wasm", dtype: "q8", promptStyle: "completion", label: "Squeal AI 20M Instruct · CPU · default", note: "Default CPU model · tiny download · experimental query quality" },
     { id: "onnx-community/gemma-3-270m-ONNX", runtime: "transformers", device: "wasm", dtype: "q4", promptStyle: "gemma", label: "Gemma 3 270M Q4 · CPU", note: "Compact 4-bit instruction model · works without WebGPU" },
-    { id: "onnx-community/gemma-3-1b-it-ONNX", runtime: "transformers", device: "wasm", dtype: "q4", label: "Gemma 3 1B Q4 · ONNX CPU", note: "Official community ONNX conversion · approximately 880 MB" },
+    { id: "onnx-community/gemma-3-1b-it-ONNX", runtime: "transformers", device: "wasm", dtype: "q8", label: "Gemma 3 1B Q8 · ONNX CPU", note: "CPU-compatible community ONNX conversion · approximately 1 GB" },
     { id: "Xenova/gpt2", runtime: "transformers", device: "wasm", dtype: "fp32", promptStyle: "completion", label: "GPT-2 124M FP32 · CPU", note: "Small completion model · experimental query quality" },
     { id: "unsloth/Qwen3.5-0.8B-GGUF", file: "Qwen3.5-0.8B-UD-IQ2_XXS.gguf", runtime: "gguf", label: "Qwen3.5 0.8B IQ2 XXS · CPU", note: "Smallest 2-bit GGUF · 338 MB · works without WebGPU" },
     { id: "unsloth/gemma-4-E2B-it-qat-mobile-GGUF", file: "gemma-4-E2B-it-qat-UD-Q2_K_XL.gguf", runtime: "gguf", label: "Gemma 4 E2B Q2 XL · GGUF CPU", note: "Experimental Gemma 4 text model · 2.19 GB · MTP drafter not required" },
