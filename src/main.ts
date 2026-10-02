@@ -9,11 +9,13 @@ import { createSearchQuery, createSearchUrl } from "./searchQuery";
 import { createTransformersInput, type TransformersPromptStyle } from "./transformersPrompt";
 import {
   composeTextTreatment,
-  createEnglishTreatmentPrompt,
-  createOriginalTreatmentPrompt,
-  MAX_ENGLISH_TREATMENT_TOKENS,
-  MAX_ORIGINAL_TREATMENT_TOKENS,
+  createAnalysisPrompt,
+  createCorrectionPrompt,
+  createTranslationPrompt,
+  MAX_ANALYSIS_TOKENS,
+  MAX_CORRECTION_TOKENS,
   MAX_TEXT_LENGTH,
+  MAX_TRANSLATION_TOKENS,
   TEXT_EXAMPLES,
 } from "./textTreatment";
 import "./style.css";
@@ -106,7 +108,7 @@ document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
       <p id="error" class="error" role="alert"></p>
     </section>
     <section class="text-studio" id="text-studio" aria-labelledby="text-studio-title">
-      <div class="section-intro"><p class="eyebrow">MULTILINGUAL TEXT STUDIO</p><h2 id="text-studio-title">Polish, understand<br><em>and translate.</em></h2><p>Two focused local passes correct and condense your text, then produce a structured English translation, key points, corrections and sentiment labels.</p></div>
+      <div class="section-intro"><p class="eyebrow">MULTILINGUAL TEXT STUDIO</p><h2 id="text-studio-title">Polish, understand<br><em>and translate.</em></h2><p>Three focused local passes correct your text, translate it without distractions, then produce key points, corrections and sentiment labels.</p></div>
       <div class="workspace text-workspace">
         <div class="workspace-head"><div><span class="step">01</span><h2>Paste the text to process</h2></div><span class="privacy-note">PROCESSED LOCALLY</span></div>
         <textarea id="treatment-input" rows="7" maxlength="${MAX_TEXT_LENGTH}" placeholder="Paste German, French, or another language here…" aria-label="Text to correct, summarize, and translate"></textarea>
@@ -314,17 +316,20 @@ treatText.addEventListener("click", async () => {
   const model = selectedModel(); let generationStarted: number | null = null;
   try {
     generationStarted = performance.now();
-    const originalAnalysis = (await generateLocalText(createOriginalTreatmentPrompt(), request, MAX_ORIGINAL_TREATMENT_TOKENS, "Response")).trim();
-    if (!originalAnalysis) throw new Error("The model returned an empty editing response. Please try again or choose a larger model.");
+    const corrected = (await generateLocalText(createCorrectionPrompt(), request, MAX_CORRECTION_TOKENS, "Corrected text")).trim();
+    if (!corrected) throw new Error("The model returned an empty editing response. Please try again or choose a larger model.");
     treatText.querySelector("span")!.textContent = "Translating…";
-    const englishAnalysis = (await generateLocalText(
-      createEnglishTreatmentPrompt(request, originalAnalysis),
-      "Produce the requested English sections from the delimited source and edited analysis.",
-      MAX_ENGLISH_TREATMENT_TOKENS,
-      "Response",
+    const translation = (await generateLocalText(createTranslationPrompt(), corrected, MAX_TRANSLATION_TOKENS, "English translation")).trim();
+    if (!translation) throw new Error("The model returned an empty translation. Please try again or choose a larger model.");
+    treatText.querySelector("span")!.textContent = "Analyzing…";
+    const analysis = (await generateLocalText(
+      createAnalysisPrompt(request, corrected, translation),
+      "Produce the requested analysis sections from the delimited text versions.",
+      MAX_ANALYSIS_TOKENS,
+      "Analysis",
     )).trim();
-    if (!englishAnalysis) throw new Error("The model returned an empty English response. Please try again or choose a larger model.");
-    treatmentOutput.textContent = composeTextTreatment(originalAnalysis, englishAnalysis); treatmentResult.hidden = false;
+    if (!analysis) throw new Error("The model returned an empty analysis. Please try again or choose a larger model.");
+    treatmentOutput.textContent = composeTextTreatment(corrected, translation, analysis); treatmentResult.hidden = false;
     performanceLog.add(model.label, "Text treatment", generationStarted);
     treatmentResult.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (reason) {
