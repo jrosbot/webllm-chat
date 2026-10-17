@@ -86,7 +86,7 @@ const MODELS: Record<Backend, Model[]> = {
 document.querySelector<HTMLDivElement>("#app")!.innerHTML = `
   <header class="site-header">
     <a class="brand" href="#top" aria-label="WebLLM applications home"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span><span>WEBLLM</span></a>
-    <nav class="app-nav" aria-label="Applications"><span>APPLICATIONS</span><a href="#issue-query">Issue query</a><a href="#text-studio">Text editor studio</a></nav>
+    <nav class="app-nav" aria-label="Applications"><span>APPLICATIONS</span><a href="#issue-query">Issue query</a><a href="#text-studio">Text editor studio</a><a href="./image.html">Image vocabulary studio</a></nav>
     <div class="local-pill"><span class="pulse"></span> RUNS LOCALLY</div>
   </header>
   <main id="top">
