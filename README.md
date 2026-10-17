@@ -48,6 +48,12 @@ ONNX Runtime Web / WebGPU, without loading the text application's models.
   Reports distinguish fetched model response bytes, cache reads, checksum time,
   session creation, tokenizer load and generation time. Sampled JS heap is only a
   partial browser-specific estimate; GPU memory and total RAM are unavailable.
+- **Check WebGPU runtime** runs a tiny real ONNX Add calculation without image
+  weights. Generate also runs this check before fetching weights. The pinned ORT
+  WebGPU version uses matching `asyncify.mjs`/`asyncify.wasm` assets; JSEP assets
+  are incompatible and cause `webgpuInit is not a function`. Reports include the
+  runtime check result and initialization time. A passing basic runtime check
+  does not establish FP16 support or sufficient memory for the full image model.
 - Cancel stops downloads and checks between GPU operations; an operation already
   submitted to the GPU must finish. Release frees sessions; Clear cache removes
   only this studio's model cache, leaving tokenizer/runtime caches alone.
@@ -71,7 +77,9 @@ validation, a model-host HTTP error, and JSON report export without downloading
 weights. With the dev server running, run `npm run test:images` (install Playwright
 Chromium first, or set `CHROMIUM_PATH` to an existing Chromium executable).
 `IMAGE_STUDIO_BASE_URL` can target a preview server or a project subpath. These
-checks use mocked capabilities and do not validate GPU inference.
+checks use mocked capabilities for the UI cases plus an unmocked, real WebGPU
+Add calculation to catch JS/WASM initialization regressions. They do not validate
+full diffusion inference.
 
 ## Deploy to GitHub Pages
 

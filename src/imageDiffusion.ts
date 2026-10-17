@@ -1,5 +1,6 @@
 import { lcmStep, lcmTimesteps, pixelsFromPlanarRGB, seededNoise } from "./diffusionMath";
 import type * as Ort from "onnxruntime-web";
+import { initializeImageRuntime } from "./imageRuntime";
 
 export const IMAGE_MODEL = "akameswa/lcm-tiny-sd-onnx-fp16";
 export const IMAGE_REVISION = "3b423c4e1d61d50c56efdde24592862be68c8574";
@@ -18,6 +19,7 @@ export interface ImageMetrics {
   model: string; revision: string; tokenizerRevision: string;
   modelArtifactBytes: number; modelFetchedBytes: number; modelCacheBytes: number;
   fetchMs: number; verificationMs: number; sessionLoadMs: number; tokenizerLoadMs: number; generationMs: number | null; totalMs: number | null;
+  runtimeInitMs: number | null; runtimeCheck: "not-run" | "passed" | "failed";
   peakObservedJsHeapBytes: number | null; gpuMemoryBytes: null;
   prompt: string; seed: number; steps: number; outputSize: number; grayscale: boolean;
   status: "not-started" | "loading" | "generating" | "completed" | "failed";
@@ -49,15 +51,12 @@ export class ImageDiffusion {
   async load(metrics: ImageMetrics, update: (message: string) => void, signal: AbortSignal) {
     if (this.loaded) return;
     await imageCapability();
-    // Use the same ORT version as Transformers.js. Explicit URLs let Vite emit both
-    // JSEP assets for project-relative GitHub Pages deployments.
-    this.ort = await import("onnxruntime-web/webgpu");
-    const [{ default: wasm }, { default: mjs }] = await Promise.all([
-      import("onnxruntime-web/ort-wasm-simd-threaded.jsep.wasm?url"),
-      import("onnxruntime-web/ort-wasm-simd-threaded.jsep.mjs?url"),
-    ]);
-    this.ort.env.wasm.wasmPaths = { wasm, mjs };
-    this.ort.env.wasm.numThreads = 1;
+    update("Checking the WebGPU runtime before downloading model weights…");
+    const runtimeStart = performance.now();
+    try { this.ort = await initializeImageRuntime(); metrics.runtimeCheck = "passed"; }
+    catch (error) { metrics.runtimeCheck = "failed"; throw error; }
+    finally { metrics.runtimeInitMs = performance.now() - runtimeStart; }
+    signal.throwIfAborted();
     const cache = await caches.open(CACHE).catch(() => undefined);
     const read = async (file: typeof FILES.text) => {
       signal.throwIfAborted();
