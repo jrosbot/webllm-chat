@@ -4,7 +4,7 @@ import "./imageStudio.css";
 import { initializeImageRuntime } from "./imageRuntime";
 
 document.querySelector<HTMLDivElement>("#image-app")!.innerHTML = `
-  <header class="site-header"><a class="brand" href="./index.html">WEBLLM</a><nav class="app-nav" aria-label="Applications"><a href="./index.html">Text applications</a><a href="#image-studio" aria-current="page">Image vocabulary studio</a></nav><div class="local-pill">RUNS LOCALLY</div></header>
+  <header class="site-header"><a class="brand" href="./index.html">WEBLLM</a><nav class="app-nav" aria-label="Applications"><a href="./index.html">Text applications</a><a href="./audio.html">Audio vocabulary studio</a><a href="#image-studio" aria-current="page">Image vocabulary studio</a></nav><div class="local-pill">RUNS LOCALLY</div></header>
   <main>
     <section class="hero"><p class="eyebrow">EXPERIMENTAL · LOCAL IMAGE GENERATION</p><h1>Picture the phrase.</h1><p class="lede">Create a small visual cue for a word or phrase. Images are generated on this device; prompts are not sent to an image service.</p></section>
     <section class="workspace" id="image-studio" aria-labelledby="image-title">

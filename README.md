@@ -84,6 +84,23 @@ checks use mocked capabilities for the UI cases plus an unmocked, real WebGPU
 Add calculation to catch JS/WASM initialization regressions. They do not validate
 full diffusion inference.
 
+## Audio vocabulary studio (experimental)
+
+Open `audio.html` from the application navigation to create German or Catalan
+speech locally. It uses the Transformers.js text-to-speech pipeline with one
+MMS-TTS VITS checkpoint per language (`Xenova/mms-tts-deu` and
+`Xenova/mms-tts-cat`). CPU/WASM with quantized weights is the default; WebGPU is
+an optional experimental backend. Generated speech can be played in the page or
+saved as WAV. Model weights are fetched from Hugging Face once per language and
+cached by the browser; the text itself stays on-device. The research checkpoints
+are single-speaker and carry CC BY-NC 4.0 terms, so review each model card before
+redistributing generated audio or using it commercially.
+
+Run `npm run test:audio` with the dev server active to check language selection,
+lazy model loading, validation, and retry after a simulated model-host error.
+The smoke test does not download voice weights or validate speech quality or
+real-device inference.
+
 ## Deploy to GitHub Pages
 
 The workflow in `.github/workflows/deploy.yml` builds and deploys every push to `main`, `master`, or `work`. It can also enable Pages on a new repository, avoiding the `Get Pages site failed: Not Found` error that occurs when `configure-pages` runs before a Pages site exists.

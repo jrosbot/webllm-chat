@@ -3,6 +3,6 @@ export default defineConfig({
   // Relative URLs work both at a custom domain and at /<repository>/ on Pages.
   base: "./",
   build: {
-    rollupOptions: { input: { main: "index.html", image: "image.html" } },
+    rollupOptions: { input: { main: "index.html", image: "image.html", audio: "audio.html" } },
   },
 });
