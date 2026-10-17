@@ -12,8 +12,16 @@ try {
   for (const capability of ["missing", "no-f16", "supported"]) {
     const context = await browser.newContext({ acceptDownloads: true });
     await context.addInitScript(mode => {
+      if (mode === "supported") {
+        const gpu = navigator.gpu;
+        const requestAdapter = gpu.requestAdapter.bind(gpu);
+        Object.defineProperty(gpu, "requestAdapter", { value: options => options === undefined
+          ? Promise.resolve({ features: new Set(["shader-f16"]) })
+          : requestAdapter(options) });
+        return;
+      }
       Object.defineProperty(navigator, "gpu", { configurable: true, value: mode === "missing" ? undefined : {
-        requestAdapter: async () => ({ features: new Set(mode === "supported" ? ["shader-f16"] : []) }),
+        requestAdapter: async () => ({ features: new Set() }),
       } });
     }, capability);
     const page = await context.newPage();
@@ -55,13 +63,36 @@ try {
       assert.equal(report.modelFetchedBytes, 0);
       assert.equal(report.generationMs, null);
       assert.equal(report.gpuMemoryBytes, null);
+      assert.equal(report.runtimeCheck, "passed");
     }
     assert.deepEqual(errors, []);
     console.log(`PASS image studio: ${capability}`);
     passed++;
     await context.close();
   }
-  console.log(`${passed} browser checks passed. GPU inference is not exercised by these capability/HTTP mocks.`);
+  // No capability mocks: exercise the real ORT WebGPU backend and emitted WASM
+  // with a tiny Add model, which also works on an FP32-only software adapter.
+  const context = await browser.newContext({ acceptDownloads: true });
+  const page = await context.newPage();
+  let modelRequests = 0;
+  await page.route("https://huggingface.co/**", route => { modelRequests++; return route.abort(); });
+  await page.route("https://fonts.googleapis.com/**", route => route.fulfill({ body: "", contentType: "text/css" }));
+  await page.goto(new URL("image.html", base).href);
+  await page.locator("#image-check-runtime").click();
+  await page.waitForFunction(() => /Runtime check (passed|failed)/.test(document.querySelector("#image-runtime-status").textContent), undefined, { timeout: 60000 });
+  assert.match(await page.locator("#image-runtime-status").innerText(), /^Runtime check passed/);
+  assert.equal(modelRequests, 0, "The real runtime probe must not fetch image weights");
+  const downloading = page.waitForEvent("download");
+  await page.locator("#image-report").click();
+  const download = await downloading;
+  const { readFile } = await import("node:fs/promises");
+  const report = JSON.parse(await readFile(await download.path(), "utf8"));
+  assert.equal(report.runtimeCheck, "passed");
+  assert.ok(report.runtimeInitMs > 0);
+  assert.equal(report.modelFetchedBytes, 0);
+  await context.close();
+  console.log("PASS real WebGPU runtime: Add([1,2], [1,2]) = [2,4]");
+  console.log(`${passed} UI checks and 1 real WebGPU runtime check passed. Full diffusion remains a separate hardware test.`);
 } finally {
   await browser.close();
 }
