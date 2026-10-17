@@ -9,15 +9,18 @@ const browser = await chromium.launch({
 });
 let passed = 0;
 try {
-  for (const capability of ["missing", "no-f16", "supported"]) {
+  for (const capability of ["missing", "no-f16", "low-storage", "truncated", "supported"]) {
     const context = await browser.newContext({ acceptDownloads: true });
     await context.addInitScript(mode => {
-      if (mode === "supported") {
+      if (["supported", "low-storage", "truncated"].includes(mode)) {
         const gpu = navigator.gpu;
         const requestAdapter = gpu.requestAdapter.bind(gpu);
         Object.defineProperty(gpu, "requestAdapter", { value: options => options === undefined
           ? Promise.resolve({ features: new Set(["shader-f16"]) })
           : requestAdapter(options) });
+        if (mode === "low-storage") {
+          Object.defineProperty(navigator.storage, "estimate", { configurable: true, value: async () => ({ quota: 1024, usage: 0 }) });
+        }
         return;
       }
       Object.defineProperty(navigator, "gpu", { configurable: true, value: mode === "missing" ? undefined : {
@@ -30,15 +33,28 @@ try {
     let modelRequests = 0;
     await page.route("https://huggingface.co/**", route => {
       modelRequests++;
+      if (capability === "truncated") return route.fulfill({ status: 200, body: "partial model" });
       return route.fulfill({ status: 503, body: "Simulated model-host outage" });
     });
     await page.route("https://fonts.googleapis.com/**", route => route.fulfill({ body: "", contentType: "text/css" }));
     await page.goto(new URL("image.html", base).href);
     const button = page.locator("#image-generate");
-    if (capability !== "supported") {
+    if (capability === "missing" || capability === "no-f16") {
       await page.locator("#image-error").filter({ hasText: capability === "missing" ? "requires WebGPU" : "shader-f16" }).waitFor();
       assert.equal(await button.isDisabled(), true);
       assert.equal(modelRequests, 0, "Unsupported devices must not download weights");
+    } else if (capability === "low-storage") {
+      await button.click();
+      await page.locator("#image-error").filter({ hasText: "site storage" }).waitFor({ timeout: 30000 });
+      assert.equal(modelRequests, 0, "Insufficient estimated quota must fail before fetching model weights");
+      assert.equal(await button.isEnabled(), true, "A storage error must allow retry");
+    } else if (capability === "truncated") {
+      await button.click();
+      await page.locator("#image-error").filter({ hasText: "incomplete" }).waitFor({ timeout: 30000 });
+      assert.equal(modelRequests, 1);
+      const cachedKeys = await page.evaluate(async () => (await (await caches.open("vocabulary-diffusion-v1")).keys()).map(request => request.url));
+      assert.deepEqual(cachedKeys, [], "An incomplete streamed response must be removed from CacheStorage");
+      assert.equal(await button.isEnabled(), true, "An incomplete download must allow retry");
     } else {
       await page.waitForFunction(() => !document.querySelector("#image-generate").disabled);
       assert.equal(modelRequests, 0, "Opening the studio must not download weights");

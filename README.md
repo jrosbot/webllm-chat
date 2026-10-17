@@ -37,8 +37,11 @@ ONNX Runtime Web / WebGPU, without loading the text application's models.
   available memory. Unsupported devices are detected before downloading weights.
 - Uses `akameswa/lcm-tiny-sd-onnx-fp16` at revision
   `3b423c4e1d61d50c56efdde24592862be68c8574`. Its five required model artifacts total
-  **992,824,673 bytes**, plus tokenizer/runtime assets. SHA-256 checks run before
-  loading each file; successfully verified files are cached when storage permits.
+  **992,824,673 bytes**, plus tokenizer/runtime assets. Allow about 1 GB of free
+  Chrome site storage. Model responses stream directly into CacheStorage and are
+  SHA-256 checked before loading; Chrome's storage estimate is checked before each
+  uncached file, and incomplete or invalid cache entries are removed so they can
+  be retried.
 - The CLIP tokenizer is pinned to `Xenova/clip-vit-base-patch32` revision
   `d15189d7028b43f1d3e65039190477f6af591c2a`. English visual phrases work best.
 - Start with four LCM steps and seed 42. The model generates at 512 × 512; the
