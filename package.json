@@ -7,13 +7,15 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "test": "node --test tests/*.test.ts",
+    "test:images": "node scripts/smoke-image-studio.mjs",
     "preview": "vite preview",
     "benchmark:models": "node scripts/benchmark-models.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.0",
     "@mlc-ai/web-llm": "0.2.85",
-    "@wllama/wllama": "^3.6.1"
+    "@wllama/wllama": "^3.6.1",
+    "onnxruntime-web": "1.31.0-dev.20260914-8d85527a0"
   },
   "devDependencies": {
     "playwright": "^1.55.1",

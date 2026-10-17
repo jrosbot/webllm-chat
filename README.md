@@ -27,6 +27,52 @@ The app intentionally does not set `cacheDir`, `localFilesOnly`, or custom ONNX 
 
 During the first download each backend displays download progress. If no progress event arrives for 45 seconds, a **Clear download & retry** action appears and removes the incomplete model from that backend's browser cache before reloading the page. Ad blockers, VPNs, corporate proxies, and restrictive networks can block model files served by Hugging Face; try another network if a clean retry still stops at the same point.
 
+## Image vocabulary studio (experimental)
+
+Choose **Image vocabulary studio** in the application navigation to open the
+separate `image.html` page. It generates a vocabulary illustration locally with
+ONNX Runtime Web / WebGPU, without loading the text application's models.
+
+- Requires a recent browser, a WebGPU adapter with `shader-f16`, and several GB of
+  available memory. Unsupported devices are detected before downloading weights.
+- Uses `akameswa/lcm-tiny-sd-onnx-fp16` at revision
+  `3b423c4e1d61d50c56efdde24592862be68c8574`. Its five required model artifacts total
+  **992,824,673 bytes**, plus tokenizer/runtime assets. SHA-256 checks run before
+  loading each file; successfully verified files are cached when storage permits.
+- The CLIP tokenizer is pinned to `Xenova/clip-vit-base-patch32` revision
+  `d15189d7028b43f1d3e65039190477f6af591c2a`. English visual phrases work best.
+- Start with four LCM steps and seed 42. The model generates at 512 × 512; the
+  default saved result is 128 × 128 in grayscale. These output settings do not
+  reduce model download size or inference memory.
+- PNG and JSON-report download buttons let you share the output and measurements.
+  Reports distinguish fetched model response bytes, cache reads, checksum time,
+  session creation, tokenizer load and generation time. Sampled JS heap is only a
+  partial browser-specific estimate; GPU memory and total RAM are unavailable.
+- Cancel stops downloads and checks between GPU operations; an operation already
+  submitted to the GPU must finish. Release frees sessions; Clear cache removes
+  only this studio's model cache, leaving tokenizer/runtime caches alone.
+
+For validation on your GPU, open the page from `npm run dev` or the built site,
+generate a sample, inspect whether it represents the phrase, then download the PNG
+and JSON. Repeat the same seed after Release to compare cached loading; Clear cache
+before a new uncached run. No weights download until Generate is clicked.
+
+The scheduler follows Hugging Face Diffusers' `LCMScheduler` epsilon-prediction
+equations with the export's scaled-linear beta schedule. Microsoft’s
+[SD-Turbo browser example](https://github.com/microsoft/onnxruntime-inference-examples/tree/main/js/sd-turbo)
+demonstrates the underlying ONNX Runtime Web approach; this smaller LCM pipeline
+is a separate experimental adaptation, not that example's validated model.
+Review the [base model license](https://huggingface.co/segmind/tiny-sd) before
+redistributing weights. Full inference requires manual validation on compatible
+hardware; this cloud instance exposes SwiftShader without `shader-f16`.
+
+The browser smoke checks exercise unsupported-device handling, lazy model loading,
+validation, a model-host HTTP error, and JSON report export without downloading
+weights. With the dev server running, run `npm run test:images` (install Playwright
+Chromium first, or set `CHROMIUM_PATH` to an existing Chromium executable).
+`IMAGE_STUDIO_BASE_URL` can target a preview server or a project subpath. These
+checks use mocked capabilities and do not validate GPU inference.
+
 ## Deploy to GitHub Pages
 
 The workflow in `.github/workflows/deploy.yml` builds and deploys every push to `main`, `master`, or `work`. It can also enable Pages on a new repository, avoiding the `Get Pages site failed: Not Found` error that occurs when `configure-pages` runs before a Pages site exists.
