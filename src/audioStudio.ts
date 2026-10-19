@@ -47,7 +47,11 @@ document.querySelector<HTMLDivElement>("#audio-app")!.innerHTML = `
 
       <section class="speech-practice" aria-labelledby="speech-title">
         <div class="practice-heading"><span class="step">02</span><h2 id="speech-title">Speak the phrase</h2></div>
-        <p class="audio-notice">Record a short phrase in the selected language. Whisper Tiny transcribes it on this device, so you can compare what it understood. The recording is not uploaded; the first use downloads a compact multilingual model.</p>
+        <p class="audio-notice">Record a short phrase and compare it with the local transcription. Microphone audio is not uploaded; the first use downloads a compact multilingual model.</p>
+        <label class="speech-language-picker" for="speech-language">LANGUAGE YOU'RE SPEAKING
+          <select id="speech-language"><option value="ca" selected>Catalan</option><option value="de">German</option></select>
+        </label>
+        <p class="text-hint speech-language-hint">Whisper Tiny will use this language instead of trying to identify it automatically. This choice is separate from the voice language above.</p>
         <div class="record-controls">
           <button id="record-start" class="generate" type="button"><span>Start recording</span><b aria-hidden="true">●</b></button>
           <button id="record-stop" type="button" disabled>Stop recording</button>
@@ -88,6 +92,7 @@ const recordStop = get<HTMLButtonElement>("#record-stop");
 const recordClear = get<HTMLButtonElement>("#record-clear");
 const recordStatus = get<HTMLParagraphElement>("#record-status");
 const recordError = get<HTMLParagraphElement>("#record-error");
+const speechLanguage = get<HTMLSelectElement>("#speech-language");
 const recordingPreview = get<HTMLElement>("#recording-preview");
 const recordingPlayer = get<HTMLAudioElement>("#recording-player");
 const transcribe = get<HTMLButtonElement>("#transcribe");
@@ -116,6 +121,7 @@ function updateControls() {
   release.disabled = locked || (!model && !speechModel);
   text.disabled = locked;
   language.disabled = locked;
+  speechLanguage.disabled = locked;
   device.disabled = locked;
   document.querySelectorAll<HTMLButtonElement>("[data-audio-example]").forEach(button => { button.disabled = locked; });
   recordStart.disabled = locked || !navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined";
@@ -226,9 +232,17 @@ document.querySelectorAll<HTMLButtonElement>("[data-audio-example]").forEach(but
 language.addEventListener("change", () => {
   text.value = VOICES[language.value as keyof typeof VOICES].example;
   clearAudio();
-  clearRecording();
 });
 text.addEventListener("input", clearAudio);
+
+speechLanguage.addEventListener("change", () => {
+  transcriptResult.hidden = true;
+  transcriptText.value = "";
+  recordError.textContent = "";
+  recordStatus.textContent = recordedBlob
+    ? "Spoken language changed. Transcribe the recording again."
+    : "Choose the language you'll speak, then start recording.";
+});
 
 recordStart.addEventListener("click", async () => {
   clearRecording();
@@ -325,9 +339,9 @@ transcribe.addEventListener("click", async () => {
       }) as unknown as SpeechPipeline;
       speechLoadedKey = key;
     }
-    recordStatus.textContent = `Transcribing your ${language.value === "de" ? "German" : "Catalan"} recording on this device…`;
+    recordStatus.textContent = `Transcribing your ${speechLanguage.value === "de" ? "German" : "Catalan"} recording on this device…`;
     const output = await speechModel(waveform, {
-      language: whisperLanguageFor(language.value),
+      language: whisperLanguageFor(speechLanguage.value),
       task: "transcribe",
     });
     transcriptText.value = output.text.trim() || "No words were recognized. Try speaking more clearly or moving closer to the microphone.";

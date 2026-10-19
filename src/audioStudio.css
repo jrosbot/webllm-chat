@@ -15,6 +15,10 @@
 .speech-practice { margin-top: 34px; border-top: 1px solid #e1ded5; padding-top: 28px; }
 .practice-heading { display: flex; align-items: baseline; gap: 14px; margin-bottom: 16px; }
 .practice-heading h2 { margin: 0; font-size: 20px; }
+.speech-language-picker { display: grid; width: min(100%, 340px); gap: 8px; margin: 18px 0 8px; color: #77786f; font: 500 9px DM Mono, monospace; letter-spacing: .12em; }
+.speech-language-picker select { border: 1px solid #aaa89f; background: #faf9f5; color: #292a25; padding: 10px 34px 10px 11px; font: 500 12px DM Mono, monospace; }
+.speech-language-picker select:disabled { opacity: .6; }
+.speech-language-hint { margin: 0 0 12px; }
 .record-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 20px 0 10px; }
 .record-controls button:not(.generate), #transcribe { border: 1px solid #c8c5bc; background: #fff; padding: 11px 14px; color: #292a25; font: 600 10px DM Mono, monospace; cursor: pointer; }
 .record-controls button:disabled, #transcribe:disabled { cursor: default; opacity: .55; }

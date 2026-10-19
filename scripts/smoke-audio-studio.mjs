@@ -54,6 +54,7 @@ try {
   await page.route("https://fonts.googleapis.com/**", route => route.fulfill({ body: "", contentType: "text/css" }));
   await page.goto(new URL("audio.html", base).href);
   assert.equal(await page.locator("#audio-language").inputValue(), "de");
+  assert.equal(await page.locator("#speech-language").inputValue(), "ca");
   assert.equal(await page.locator("#audio-device").inputValue(), "wasm");
   assert.equal(modelRequests, 0, "Opening the page must not download a voice model");
 
@@ -64,6 +65,12 @@ try {
 
   await page.locator("[data-audio-example=ca]").click();
   assert.equal(await page.locator("#audio-language").inputValue(), "ca");
+  await page.locator("#speech-language").selectOption("de");
+  assert.equal(await page.locator("#audio-language").inputValue(), "ca", "Spoken-language selection must be independent of the voice language");
+  await page.locator("#audio-language").selectOption("de");
+  assert.equal(await page.locator("#speech-language").inputValue(), "de", "Changing the voice must not change the spoken language");
+  await page.locator("#speech-language").selectOption("ca");
+  await page.locator("#audio-language").selectOption("ca");
   assert.match(await page.locator("#audio-text").inputValue(), /poma vermella/);
   await page.locator("#audio-generate").click();
   await page.waitForFunction(() => document.querySelector("#audio-error").textContent.length > 0, undefined, { timeout: 30000 });
@@ -82,7 +89,7 @@ try {
   assert.ok(modelRequests > 1, "Transcription must lazily request multilingual Whisper weights");
   assert.equal(await page.locator("#transcribe").isEnabled(), true, "A model download error must allow retry");
   assert.deepEqual(errors, []);
-  console.log("PASS audio studio: language selection, local recording controls, lazy loading, input validation, model-host errors, and retry");
+  console.log("PASS audio studio: independent speech and voice language selection, local recording, lazy loading, model-host errors, and retry");
   await context.close();
 } finally {
   await browser.close();
