@@ -9,6 +9,40 @@ const browser = await chromium.launch({
 });
 try {
   const context = await browser.newContext();
+  await context.addInitScript(() => {
+    Object.defineProperty(navigator, "mediaDevices", {
+      configurable: true,
+      value: { getUserMedia: async () => ({ getTracks: () => [{ stop() {} }] }) },
+    });
+    class FakeMediaRecorder {
+      constructor() { this.state = "inactive"; this.mimeType = "audio/webm"; this.listeners = new Map(); }
+      addEventListener(name, listener) {
+        const listeners = this.listeners.get(name) ?? [];
+        listeners.push(listener);
+        this.listeners.set(name, listeners);
+      }
+      dispatch(name, event = {}) {
+        this[`on${name}`]?.(event);
+        for (const listener of this.listeners.get(name) ?? []) listener(event);
+      }
+      start() { this.state = "recording"; }
+      stop() {
+        this.state = "inactive";
+        setTimeout(() => {
+          this.dispatch("dataavailable", { data: new Blob(["mock audio"], { type: this.mimeType }) });
+          this.dispatch("stop");
+        }, 0);
+      }
+    }
+    window.MediaRecorder = FakeMediaRecorder;
+    window.AudioContext = class FakeAudioContext {
+      async decodeAudioData() {
+        const samples = new Float32Array(16_000).fill(0.05);
+        return { numberOfChannels: 1, sampleRate: 16_000, length: samples.length, getChannelData: () => samples };
+      }
+      async close() {}
+    };
+  });
   const page = await context.newPage();
   const errors = [];
   let modelRequests = 0;
@@ -36,8 +70,19 @@ try {
   assert.ok(modelRequests > 0, "Generating speech must lazily request the selected voice model");
   assert.equal(await page.locator("#audio-generate").isEnabled(), true, "A model download error must allow retry");
   assert.equal(await page.locator("#audio-result").isHidden(), true);
+
+  assert.equal(await page.locator("#record-start").isEnabled(), true, "Recording requires an explicit user action");
+  await page.locator("#record-start").click();
+  await page.waitForFunction(() => document.querySelector("#record-status").textContent.includes("Recording"));
+  await page.locator("#record-stop").click();
+  await page.waitForFunction(() => document.querySelector("#recording-preview").hidden === false);
+  assert.equal(await page.locator("#transcribe").isEnabled(), true, "A completed recording can be transcribed");
+  await page.locator("#transcribe").click();
+  await page.waitForFunction(() => document.querySelector("#record-error").textContent.length > 0, undefined, { timeout: 30000 });
+  assert.ok(modelRequests > 1, "Transcription must lazily request multilingual Whisper weights");
+  assert.equal(await page.locator("#transcribe").isEnabled(), true, "A model download error must allow retry");
   assert.deepEqual(errors, []);
-  console.log("PASS audio studio: language selection, lazy loading, input validation, model-host error, and retry");
+  console.log("PASS audio studio: language selection, local recording controls, lazy loading, input validation, model-host errors, and retry");
   await context.close();
 } finally {
   await browser.close();

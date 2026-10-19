@@ -12,4 +12,21 @@
 .audio-license { margin-top: 28px; }
 .audio-license a { color: #4f6522; }
 #audio-studio { scroll-margin-top: 20px; }
+.speech-practice { margin-top: 34px; border-top: 1px solid #e1ded5; padding-top: 28px; }
+.practice-heading { display: flex; align-items: baseline; gap: 14px; margin-bottom: 16px; }
+.practice-heading h2 { margin: 0; font-size: 20px; }
+.record-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 20px 0 10px; }
+.record-controls button:not(.generate), #transcribe { border: 1px solid #c8c5bc; background: #fff; padding: 11px 14px; color: #292a25; font: 600 10px DM Mono, monospace; cursor: pointer; }
+.record-controls button:disabled, #transcribe:disabled { cursor: default; opacity: .55; }
+#record-start { min-width: 168px; }
+#record-start b { color: #a83426; }
+#record-status { flex: 1 1 220px; margin: 0; color: #64655e; font-size: 12px; line-height: 1.5; }
+#record-error { margin-top: 12px; }
+.recording-preview, .transcript-result { margin-top: 24px; border-top: 1px solid #e1ded5; padding-top: 20px; }
+.recording-preview h3, .transcript-result h3 { margin: 0 0 14px; font-size: 16px; }
+.recording-preview audio { display: block; width: min(100%, 560px); margin-bottom: 14px; }
+#transcribe { min-height: 42px; }
+.transcript-result textarea { width: 100%; max-width: 720px; box-sizing: border-box; border: 1px solid #aaa89f; background: #faf9f5; color: #292a25; padding: 12px; font: 15px/1.6 system-ui, sans-serif; resize: vertical; }
+#asr-progress { width: 100%; margin-top: 8px; }
 @media (max-width: 600px) { #audio-studio .workspace-head, #audio-studio .action-row { align-items: stretch; flex-direction: column; gap: 14px; }.audio-options { display: grid; grid-template-columns: 1fr; }.audio-options select { width: 100%; }.audio-actions { flex-direction: column-reverse; }.audio-actions .generate { width: 100%; } }
+@media (max-width: 600px) { .record-controls { align-items: stretch; flex-direction: column; }.record-controls button { width: 100%; }.practice-heading { align-items: flex-start; }.speech-practice .audio-notice { margin-bottom: 18px; } }
