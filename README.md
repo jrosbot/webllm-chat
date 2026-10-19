@@ -86,20 +86,27 @@ full diffusion inference.
 
 ## Audio vocabulary studio (experimental)
 
-Open `audio.html` from the application navigation to create German or Catalan
-speech locally. It uses the Transformers.js text-to-speech pipeline with one
-MMS-TTS VITS checkpoint per language (`Xenova/mms-tts-deu` and
-`Xenova/mms-tts-cat`). CPU/WASM with quantized weights is the default; WebGPU is
-an optional experimental backend. Generated speech can be played in the page or
-saved as WAV. Model weights are fetched from Hugging Face once per language and
-cached by the browser; the text itself stays on-device. The research checkpoints
-are single-speaker and carry CC BY-NC 4.0 terms, so review each model card before
-redistributing generated audio or using it commercially.
+Open `audio.html` from the application navigation to create and recognize German
+or Catalan speech locally. Text-to-speech uses one Transformers.js MMS-TTS VITS
+checkpoint per language (`Xenova/mms-tts-deu` and `Xenova/mms-tts-cat`). Speech
+recognition records up to 20 seconds from an explicitly enabled microphone and
+uses the multilingual `Xenova/whisper-tiny` checkpoint with the selected language
+forced. It shows the recognized words so learners can compare them with what
+they said. Both tasks use CPU/WASM with quantized weights by default; WebGPU is
+an optional experimental backend. Generated speech can be played or saved as
+WAV, and recordings can be played before transcription. Microphone audio and
+text stay on-device; model weights are fetched from Hugging Face once and cached
+by the browser. Whisper Tiny supports German and Catalan but may miss words,
+especially with pronunciation variation or background noise. The MMS-TTS research
+checkpoints are single-speaker and carry CC BY-NC 4.0 terms, so review each model
+card before redistributing generated audio or using it commercially.
 
 Run `npm run test:audio` with the dev server active to check language selection,
-lazy model loading, validation, and retry after a simulated model-host error.
-The smoke test does not download voice weights or validate speech quality or
-real-device inference.
+lazy loading, recording controls, validation, and retry after a simulated
+model-host error. The smoke test mocks microphone access and does not download
+weights or validate speech quality or real-device inference. `npm test` also
+checks the stereo-to-mono, resampling, and sample-rate validation helper used to
+prepare microphone audio for Whisper's 16 kHz input.
 
 ## Deploy to GitHub Pages
 
