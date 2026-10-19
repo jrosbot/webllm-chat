@@ -91,7 +91,8 @@ or Catalan speech locally. Text-to-speech uses one Transformers.js MMS-TTS VITS
 checkpoint per language (`Xenova/mms-tts-deu` and `Xenova/mms-tts-cat`). Speech
 recognition records up to 20 seconds from an explicitly enabled microphone and
 uses the multilingual `Xenova/whisper-tiny` checkpoint with the selected language
-forced. It shows the recognized words so learners can compare them with what
+explicitly forced in a separate spoken-language selector, initially set to
+Catalan. It shows the recognized words so learners can compare them with what
 they said. Both tasks use CPU/WASM with quantized weights by default; WebGPU is
 an optional experimental backend. Generated speech can be played or saved as
 WAV, and recordings can be played before transcription. Microphone audio and
