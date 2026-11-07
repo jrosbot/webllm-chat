@@ -163,6 +163,6 @@ With no filters, the command checks and tries every model exposed by both select
 
 The Vite build uses relative asset paths, so it works for both user sites and project sites without changing a repository name in configuration.
 
-Each deployment has one entry point at `index.html`. Backend detection, selection, model loading, and generation all happen on that page.
+The text application starts at `index.html`; the image, audio, and video studios have their own entry pages. Backend detection, model loading, and generation for the text application happen on `index.html`.
 
 For each search, the selected model returns one query from a compact, platform-specific prompt. Generation is capped at 48 tokens and the CPU GGUF context at 1,024 tokens, avoiding time spent on explanations that the app would discard. Requests remain limited to 1,000 characters, and deterministic parsing still provides a fallback when a small model rambles.
