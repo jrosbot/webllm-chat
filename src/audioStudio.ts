@@ -18,7 +18,7 @@ const MAX_RECORDING_MS = 20_000;
 document.querySelector<HTMLDivElement>("#audio-app")!.innerHTML = `
   <header class="site-header">
     <a class="brand" href="./index.html" aria-label="WebLLM applications home"><span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span><span>WEBLLM</span></a>
-    <nav class="app-nav" aria-label="Applications"><span>APPLICATIONS</span><a href="./index.html">Text applications</a><a href="./image.html">Image vocabulary studio</a><a href="#audio-studio" aria-current="page">Audio vocabulary studio</a></nav>
+    <nav class="app-nav" aria-label="Applications"><span>APPLICATIONS</span><a href="./index.html">Text applications</a><a href="./image.html">Image vocabulary studio</a><a href="#audio-studio" aria-current="page">Audio vocabulary studio</a><a href="./video.html">Video studio</a></nav>
     <div class="local-pill"><span class="pulse"></span> RUNS LOCALLY</div>
   </header>
   <main>

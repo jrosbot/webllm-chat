@@ -84,6 +84,35 @@ checks use mocked capabilities for the UI cases plus an unmocked, real WebGPU
 Add calculation to catch JS/WASM initialization regressions. They do not validate
 full diffusion inference.
 
+## Video studio (experimental)
+
+Open `video.html` to generate a 17-frame, 256 × 256 local video from text or an
+optional first-frame photo. It requires WebGPU. The verified browser model is
+Drishya Tiny Q4: on first use the app downloads the published 425.7 MB FP16
+generator, converts its dense weights to real ONNX Runtime `MatMulNBits` Q4
+blocks in a worker, then loads the Flan-T5 encoder and compact TAEW2.2 decoder
+(about 239.4 MB). The resulting model cache is about 377 MB plus tokenizer and
+runtime files. Generation can be slow, and the first Q4 conversion has a high
+temporary memory cost. Chrome Android and the Redmi Note 15 have not been
+validated; `navigator.deviceMemory` and the JS heap sample are hints, not total
+RAM or WebGPU memory measurements.
+
+The Drishya Tiny checkpoint is CC BY-NC 4.0. Flan-T5 is Apache-2.0 and the
+compact TAEW2.2 decoder is MIT. The app pins and checks model files, keeps the
+photo and prompt in the browser, and exposes timings and a JSON benchmark
+report. A tiny real Q4 WebGPU check runs before weight loading. The model is
+experimental and best suited to simple scenery, water, sky and fire prompts;
+its previews are softer than the full VAE. No verified executable 1-bit video
+checkpoint was found, so 1-bit is explicitly unavailable.
+
+Model-source, license, component-size, quantization and benchmark evidence is
+in [`docs/video-studio-models.md`](docs/video-studio-models.md). With the dev
+server running, `npm run test:video` checks the unsupported-device path, lazy
+loading, input validation, JSON report export, a real Q4 WebGPU operator and
+synthetic WebM encoding. It does not download video weights or establish full
+model inference on a target phone. Set `VIDEO_STUDIO_BASE_URL` to test a preview
+URL or a project subpath and `CHROMIUM_PATH` to use a system Chromium.
+
 ## Audio vocabulary studio (experimental)
 
 Open `audio.html` from the application navigation to create and recognize German
@@ -134,6 +163,6 @@ With no filters, the command checks and tries every model exposed by both select
 
 The Vite build uses relative asset paths, so it works for both user sites and project sites without changing a repository name in configuration.
 
-Each deployment has one entry point at `index.html`. Backend detection, selection, model loading, and generation all happen on that page.
+The text application starts at `index.html`; the image, audio, and video studios have their own entry pages. Backend detection, model loading, and generation for the text application happen on `index.html`.
 
 For each search, the selected model returns one query from a compact, platform-specific prompt. Generation is capped at 48 tokens and the CPU GGUF context at 1,024 tokens, avoiding time spent on explanations that the app would discard. Requests remain limited to 1,000 characters, and deterministic parsing still provides a fallback when a small model rambles.

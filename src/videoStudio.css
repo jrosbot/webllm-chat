@@ -1,0 +1,36 @@
+.video-badge { color: #667085; font-size: 12px; }
+.video-notice { margin: 0 0 22px; color: #657286; line-height: 1.7; }
+.video-variants { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0 0 24px; }
+.video-variant { display: grid; gap: 7px; border: 1px solid #d5dce4; border-radius: 10px; padding: 14px; line-height: 1.5; }
+.video-variant strong { color: #172133; }
+.video-variant span { color: #657286; font-size: 13px; }
+.video-variant.available { border-color: #75a98a; background: #f5faf6; }
+.video-variant.unavailable { background: #f7f8fa; }
+.video-photo { display: grid; justify-items: start; gap: 10px; margin: 22px 0; }
+.video-photo > label { color: #657286; font-size: 12px; letter-spacing: .06em; }
+.video-photo input { max-width: 100%; }
+#video-photo-preview { width: 128px; height: 128px; object-fit: cover; border: 1px solid #d5dce4; border-radius: 8px; }
+#video-photo-clear, .video-actions button:not(.generate) { border: 1px solid #d5dce4; border-radius: 8px; padding: 10px 14px; background: white; color: #172133; cursor: pointer; }
+.video-options { display: flex; flex-wrap: wrap; gap: 20px; margin: 22px 0 12px; align-items: end; }
+.video-options label { display: grid; gap: 8px; color: #657286; font-size: 13px; }
+.video-options input, .video-options select { max-width: 180px; border: 1px solid #d5dce4; border-radius: 8px; padding: 10px; color: #172133; background: white; }
+.video-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.video-actions button:disabled { cursor: default; opacity: .55; }
+#video-progress { width: 100%; margin-top: 14px; }
+#video-result { display: grid; justify-items: start; gap: 12px; margin: 24px 0; }
+#video-preview { display: block; width: min(100%, 480px); aspect-ratio: 1; background: #111; border: 1px solid #d5dce4; border-radius: 10px; }
+#video-caption { color: #657286; line-height: 1.6; }
+.video-measurements { margin-top: 28px; border-top: 1px solid #d5dce4; padding-top: 20px; }
+.video-measurements summary { cursor: pointer; font-weight: 600; }
+#video-metrics { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 11px 18px; margin: 18px 0; }
+#video-metrics dt { color: #657286; }
+#video-metrics dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.video-maintenance { margin-top: 20px; }
+.video-maintenance button { font-size: 13px; }
+#video-studio { scroll-margin-top: 20px; }
+@media (max-width: 680px) {
+  .video-variants { grid-template-columns: 1fr; }
+  #video-studio .workspace-head, #video-studio .action-row { align-items: start; flex-direction: column; gap: 14px; }
+  #video-metrics { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+  #video-metrics dd { text-align: left; margin-bottom: 9px; }
+}
