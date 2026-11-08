@@ -1,6 +1,7 @@
 import type * as Ort from "onnxruntime-web";
 import { initializeImageRuntime } from "./imageRuntime";
 import { createStreamingSha256 } from "./streamingHash";
+import { decoderPixelsToRgb } from "./videoOutput";
 import type { VideoQuantizationSummary } from "./videoQuantization";
 
 export const VIDEO_MODEL = "udgamlabs/Drishya-Tiny";
@@ -570,12 +571,9 @@ export class VideoDiffusion {
       const decodeStarted = performance.now();
       try {
         decoded = await this.decoder!.run({ z: latentTensor });
-        const frames = decoded.frames.data;
-        if (!(frames instanceof Uint8Array) || frames.length !== FRAME_COUNT * VIDEO_WIDTH * VIDEO_HEIGHT * 3) {
-          throw new Error("The local decoder returned an unexpected video shape or data type.");
-        }
+        const frames = decoderPixelsToRgb(decoded.frames.data, decoded.frames.dims);
         metrics.decodeMs = performance.now() - decodeStarted;
-        return { rgb: frames.slice(), stepMs, totalGenerationMs: performance.now() - generationStarted, mode: first ? "image-to-video" as const : "text-to-video" as const };
+        return { rgb: frames, stepMs, totalGenerationMs: performance.now() - generationStarted, mode: first ? "image-to-video" as const : "text-to-video" as const };
       } finally { latentTensor.dispose(); Object.values(decoded ?? {}).forEach(tensor => tensor.dispose()); }
     } finally {
       textTensor.dispose(); maskTensor.dispose(); cfgTensor.dispose(); condTensor.dispose();
